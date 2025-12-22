@@ -16,7 +16,7 @@ export default function Home() {
             Find Your Perfect Bus
           </h2>
           <p className="text-xl text-gray-600">
-            Search from thousands of routes across the country
+            とりあえず表示される画面
           </p>
         </div>
 
@@ -64,16 +64,16 @@ export default function Home() {
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
           <div className="bg-white p-6 rounded-lg shadow text-center">
-            <div className="text-4xl font-bold text-blue-600">500+</div>
+            <div className="text-4xl font-bold text-blue-600">only ONE</div>
             <div className="text-gray-600 mt-2">Bus Operators</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow text-center">
-            <div className="text-4xl font-bold text-blue-600">1000+</div>
-            <div className="text-gray-600 mt-2">Routes Available</div>
+            <div className="text-4xl font-bold text-blue-600">3</div>
+            <div className="text-gray-600 mt-2">Routes Available cuz it is countryside</div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow text-center">
-            <div className="text-4xl font-bold text-blue-600">50K+</div>
-            <div className="text-gray-600 mt-2">Happy Travelers</div>
+            <div className="text-4xl font-bold text-blue-600">0</div>
+            <div className="text-gray-600 mt-2">Travellers</div>
           </div>
         </div>
       </main>
