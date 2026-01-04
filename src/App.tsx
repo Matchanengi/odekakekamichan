@@ -23,6 +23,7 @@ import { NewPasswordPage } from './components/NewPasswordPage';
 import { BookingConfirmPage } from './components/BookingConfirmPage';
 import { BookingCompletePage } from './components/BookingCompletePage';
 import { BusResultsPage } from './components/BusResultsPage';
+import './App.css';
 
 type MainPage = 'top' | 'reservations' | 'new-reservation' | 'notifications' | 'member' | 'contact';
 type UserPage = 'home' | 'travel' | 'sightseeing' | 'booking' | 'login' | 'map' | 'contact' | 'member' | 'route-map' | 'itinerary' | 'register' | 'register-confirm' | 'password-reset' | 'one-time-password' | 'new-password' | 'bus-results' | 'booking-confirm' | 'booking-complete';
