@@ -4,9 +4,10 @@ interface UserHeaderProps {
   currentPage: UserPage;
   onPageChange: (page: UserPage) => void;
   isLoggedIn?: boolean;
+  onBusBookingRequireLogin?: () => void;
 }
 
-export function UserHeader({ currentPage, onPageChange, isLoggedIn = false }: UserHeaderProps) {
+export function UserHeader({ currentPage, onPageChange, isLoggedIn = false, onBusBookingRequireLogin }: UserHeaderProps) {
   return (
     <header className="bg-cyan-400 text-blue-900 px-4 sm:px-8 py-4">
       <div className="flex items-center justify-between flex-col sm:flex-row gap-4">
@@ -46,7 +47,13 @@ export function UserHeader({ currentPage, onPageChange, isLoggedIn = false }: Us
               観光地
             </button>
             <button 
-              onClick={() => onPageChange('booking')}
+              onClick={() => {
+                if (isLoggedIn) {
+                  onPageChange('booking');
+                } else if (onBusBookingRequireLogin) {
+                  onBusBookingRequireLogin();
+                }
+              }}
               className="px-4 sm:px-6 py-2 sm:py-3 border-2 border-l-0 border-black text-sm sm:text-base flex-1 sm:flex-none bg-white hover:bg-gray-50"
             >
               バス予約

@@ -22,16 +22,18 @@ import { OneTimePasswordPage } from './components/OneTimePasswordPage';
 import { NewPasswordPage } from './components/NewPasswordPage';
 import { BookingConfirmPage } from './components/BookingConfirmPage';
 import { BookingCompletePage } from './components/BookingCompletePage';
+import { BusResultsPage } from './components/BusResultsPage';
 import './App.css';
 
 type MainPage = 'top' | 'reservations' | 'new-reservation' | 'notifications' | 'member' | 'contact';
-type UserPage = 'home' | 'travel' | 'sightseeing' | 'booking' | 'login' | 'map' | 'contact' | 'member' | 'route-map' | 'itinerary' | 'register' | 'register-confirm' | 'password-reset' | 'one-time-password' | 'new-password' | 'booking-confirm' | 'booking-complete';
+type UserPage = 'home' | 'travel' | 'sightseeing' | 'booking' | 'login' | 'map' | 'contact' | 'member' | 'route-map' | 'itinerary' | 'register' | 'register-confirm' | 'password-reset' | 'one-time-password' | 'new-password' | 'bus-results' | 'booking-confirm' | 'booking-complete';
 type UserType = 'guest' | 'user' | 'admin';
 
 export default function App() {
   const [userType, setUserType] = useState<UserType>('guest');
   const [currentMainPage, setCurrentMainPage] = useState<MainPage>('top');
   const [currentUserPage, setCurrentUserPage] = useState<UserPage>('home');
+  const [loginMessage, setLoginMessage] = useState<string>('');
   const [registerData, setRegisterData] = useState<{
     lastName: string;
     firstName: string;
@@ -40,12 +42,31 @@ export default function App() {
     googleLinked: boolean;
   } | null>(null);
   const [resetEmail, setResetEmail] = useState('');
+  const [busSearchData, setBusSearchData] = useState<{
+    line: string;
+    departure: string;
+    arrival: string;
+    tripType: '片道' | '往復';
+    outboundDate: string;
+    outboundTime: string;
+    returnDate?: string;
+    returnTime?: string;
+    adults: number;
+    children: number;
+  } | null>(null);
   const [bookingData, setBookingData] = useState<{
+    line?: string;
     departure: string;
     arrival: string;
     tripType: '片道' | '往復';
     date: string;
     time: string;
+    departureTime?: string;
+    arrivalTime?: string;
+    returnDate?: string;
+    returnTime?: string;
+    returnDepartureTime?: string;
+    returnArrivalTime?: string;
     adults: number;
     children: number;
   } | null>(null);
@@ -53,11 +74,13 @@ export default function App() {
   const handleLoginAsUser = () => {
     setUserType('user');
     setCurrentUserPage('home');
+    setLoginMessage('');
   };
 
   const handleLoginAsAdmin = () => {
     setUserType('admin');
     setCurrentMainPage('top');
+    setLoginMessage('');
   };
 
   const handleLogout = () => {
@@ -71,8 +94,18 @@ export default function App() {
       <div>
         <UserHeader 
           currentPage={currentUserPage} 
-          onPageChange={setCurrentUserPage}
+          onPageChange={(page) => {
+            if (page === 'login' && loginMessage) {
+              // ログインページに遷移する際、既にメッセージがある場合はクリア
+              setLoginMessage('');
+            }
+            setCurrentUserPage(page);
+          }}
           isLoggedIn={userType === 'user'}
+          onBusBookingRequireLogin={() => {
+            setLoginMessage('バス予約は会員のみの機能です。ログインしてください。');
+            setCurrentUserPage('login');
+          }}
         />
         {currentUserPage === 'home' && <UserLandingPage onNavigate={setCurrentUserPage} />}
         {currentUserPage === 'login' && (
@@ -81,6 +114,7 @@ export default function App() {
             onLoginAsAdmin={handleLoginAsAdmin}
             onShowRegister={() => setCurrentUserPage('register')}
             onShowPasswordReset={() => setCurrentUserPage('password-reset')}
+            message={loginMessage}
           />
         )}
         {currentUserPage === 'map' && <MapPage />}
@@ -89,9 +123,9 @@ export default function App() {
         {currentUserPage === 'booking' && (
           <UserBusBookingPage 
             onShowRouteMap={() => setCurrentUserPage('route-map')}
-            onShowConfirm={(data) => {
-              setBookingData(data);
-              setCurrentUserPage('booking-confirm');
+            onShowBusResults={(data) => {
+              setBusSearchData(data);
+              setCurrentUserPage('bus-results');
             }}
           />
         )}
@@ -137,13 +171,23 @@ export default function App() {
         {currentUserPage === 'booking-confirm' && bookingData && (
           <BookingConfirmPage 
             bookingData={bookingData}
-            onBack={() => setCurrentUserPage('booking')}
+            onBack={() => setCurrentUserPage('bus-results')}
             onConfirm={() => setCurrentUserPage('booking-complete')}
           />
         )}
         {currentUserPage === 'booking-complete' && (
           <BookingCompletePage 
             onComplete={() => setCurrentUserPage('home')}
+          />
+        )}
+        {currentUserPage === 'bus-results' && busSearchData && (
+          <BusResultsPage 
+            searchData={busSearchData}
+            onBack={() => setCurrentUserPage('booking')}
+            onConfirm={(data) => {
+              setBookingData(data);
+              setCurrentUserPage('booking-confirm');
+            }}
           />
         )}
       </div>

@@ -6,9 +6,10 @@ interface LoginPageProps {
   onLoginAsAdmin: () => void;
   onShowRegister?: () => void;
   onShowPasswordReset?: () => void;
+  message?: string;
 }
 
-export function LoginPage({ onLoginAsUser, onLoginAsAdmin, onShowRegister, onShowPasswordReset }: LoginPageProps) {
+export function LoginPage({ onLoginAsUser, onLoginAsAdmin, onShowRegister, onShowPasswordReset, message }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -19,6 +20,15 @@ export function LoginPage({ onLoginAsUser, onLoginAsAdmin, onShowRegister, onSho
         <div className="bg-cyan-400 rounded-[3rem] p-8 sm:p-12">
           <div className="bg-white rounded-[2.5rem] p-8 sm:p-16">
             <h1 className="text-blue-900 mb-12">ログイン</h1>
+
+            {/* Message */}
+            {message && (
+              <div className="mb-8 max-w-2xl mx-auto">
+                <div className="bg-cyan-100 border-2 border-cyan-400 rounded-xl p-6 text-center">
+                  <p className="text-blue-900">{message}</p>
+                </div>
+              </div>
+            )}
 
             <div className="max-w-2xl mx-auto space-y-8">
               {/* Email */}
