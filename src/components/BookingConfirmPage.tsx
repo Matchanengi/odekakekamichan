@@ -4,11 +4,18 @@ interface BookingConfirmPageProps {
   onBack: () => void;
   onConfirm: () => void;
   bookingData: {
+    line?: string;
     departure: string;
     arrival: string;
     tripType: '片道' | '往復';
     date: string;
     time: string;
+    departureTime?: string;
+    arrivalTime?: string;
+    returnDate?: string;
+    returnTime?: string;
+    returnDepartureTime?: string;
+    returnArrivalTime?: string;
     adults: number;
     children: number;
   };
@@ -26,6 +33,15 @@ export function BookingConfirmPage({ onBack, onConfirm, bookingData }: BookingCo
               <p className="text-blue-900 mb-2">市営バスの予約をします</p>
               <p className="text-blue-900">目的地が表示されない場合はタクシー等の他の公共交通機関をお使いください</p>
             </div>
+
+            {/* 路線情報 */}
+            {bookingData.line && (
+              <div className="mb-6">
+                <div className="bg-cyan-50 border-2 border-cyan-400 rounded-2xl p-6">
+                  <p className="text-blue-900 mb-2"><span className="font-semibold">路線:</span> {bookingData.line}</p>
+                </div>
+              </div>
+            )}
 
             {/* 乗車地・降車地 */}
             <div className="flex items-center justify-center gap-4 mb-8">
@@ -63,24 +79,87 @@ export function BookingConfirmPage({ onBack, onConfirm, bookingData }: BookingCo
                 </button>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <span className="text-blue-900 min-w-[80px]">日時</span>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                   <div className="bg-white border-2 border-blue-900 rounded-lg px-6 py-2">
                     {bookingData.date}
                   </div>
                   <div className="bg-white border-2 border-blue-900 rounded-lg px-4 py-2">
-                    {bookingData.time.split(':')[0]}時
+                    {bookingData.time.split(' ')[0]}
                   </div>
                   <div className="bg-white border-2 border-blue-900 rounded-lg px-4 py-2">
-                    {bookingData.time.split(':')[1]}分
+                    {bookingData.time.split(' ')[1]}
                   </div>
-                  <button className="bg-cyan-400 text-blue-900 px-6 py-2 rounded-lg border-2 border-blue-900">
-                    出発
-                  </button>
                 </div>
               </div>
+
+              {bookingData.returnDate && bookingData.returnTime && (
+                <div className="flex items-center gap-4 mt-6 flex-wrap">
+                  <span className="text-blue-900 min-w-[80px]">帰還日時</span>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="bg-white border-2 border-blue-900 rounded-lg px-6 py-2">
+                      {bookingData.returnDate}
+                    </div>
+                    <div className="bg-white border-2 border-blue-900 rounded-lg px-4 py-2">
+                      {bookingData.returnTime.split(' ')[0]}
+                    </div>
+                    <div className="bg-white border-2 border-blue-900 rounded-lg px-4 py-2">
+                      {bookingData.returnTime.split(' ')[1]}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* 選択したバス情報 */}
+            {bookingData.departureTime && bookingData.arrivalTime && (
+              <div className="mb-8">
+                <h2 className="text-xl text-blue-900 mb-4">選択したバス</h2>
+                
+                {/* 行きのバス */}
+                <div className="bg-cyan-50 border-2 border-cyan-400 rounded-2xl p-6 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-8">
+                      <div>
+                        <div className="text-sm text-gray-600">出発時刻</div>
+                        <div className="text-2xl text-blue-900">{bookingData.departureTime}</div>
+                      </div>
+                      <ArrowRight className="text-cyan-400" size={32} />
+                      <div>
+                        <div className="text-sm text-gray-600">到着時刻</div>
+                        <div className="text-2xl text-blue-900">{bookingData.arrivalTime}</div>
+                      </div>
+                    </div>
+                    <div className="text-blue-900 bg-white px-4 py-2 rounded-lg border-2 border-blue-900">
+                      行き
+                    </div>
+                  </div>
+                </div>
+
+                {/* 帰りのバス（往復の場合） */}
+                {bookingData.returnDepartureTime && bookingData.returnArrivalTime && (
+                  <div className="bg-cyan-50 border-2 border-cyan-400 rounded-2xl p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-8">
+                        <div>
+                          <div className="text-sm text-gray-600">出発時刻</div>
+                          <div className="text-2xl text-blue-900">{bookingData.returnDepartureTime}</div>
+                        </div>
+                        <ArrowRight className="text-cyan-400" size={32} />
+                        <div>
+                          <div className="text-sm text-gray-600">到着時刻</div>
+                          <div className="text-2xl text-blue-900">{bookingData.returnArrivalTime}</div>
+                        </div>
+                      </div>
+                      <div className="text-blue-900 bg-white px-4 py-2 rounded-lg border-2 border-blue-900">
+                        帰り
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 人数 */}
             <div className="flex items-center gap-8 mb-12">
