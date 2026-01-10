@@ -38,8 +38,8 @@ export function OneTimePasswordPage({ onConfirm, onBack, email }: OneTimePasswor
               </div>
 
               {/* ワンタイムパスワード入力欄 */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 min-w-[200px]">ワンタイムパスワード</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 sm:min-w-[200px]">ワンタイムパスワード</label>
                 <input
                   type="text"
                   value={oneTimePassword}

@@ -33,8 +33,8 @@ export function PasswordResetPage({ onBack, onSendEmail }: PasswordResetPageProp
               </div>
 
               {/* Email入力欄 */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 italic min-w-[120px]">Email</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 italic sm:min-w-[120px]">Email</label>
                 <input
                   type="email"
                   value={email}

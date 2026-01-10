@@ -40,8 +40,8 @@ export function NewPasswordPage({ onComplete }: NewPasswordPageProps) {
               </div>
 
               {/* 新しいパスワード */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 min-w-[180px]">新しいパスワード</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 sm:min-w-[180px]">新しいパスワード</label>
                 <div className="flex-1 relative">
                   <input
                     type={showNewPassword ? 'text' : 'password'}
@@ -64,8 +64,8 @@ export function NewPasswordPage({ onComplete }: NewPasswordPageProps) {
               </div>
 
               {/* 確認用パスワード */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 min-w-[180px]">確認用パスワード</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 sm:min-w-[180px]">確認用パスワード</label>
                 <div className="flex-1 relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}

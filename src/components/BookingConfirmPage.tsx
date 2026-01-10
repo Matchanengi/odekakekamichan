@@ -25,170 +25,132 @@ export function BookingConfirmPage({ onBack, onConfirm, bookingData }: BookingCo
   return (
     <div className="min-h-screen bg-white py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-cyan-400 rounded-[3rem] p-8 sm:p-12">
-          <div className="bg-white rounded-[2.5rem] p-8 sm:p-16">
-            <h1 className="text-blue-900 mb-6">バス予約</h1>
+        <div className="bg-cyan-400 rounded-[3rem] p-4 sm:p-8">
+          <div className="bg-white rounded-[2.5rem] p-6 sm:p-12">
+            <h1 className="text-xl sm:text-2xl text-blue-900 mb-6">バス予約</h1>
 
             <div className="mb-8">
-              <p className="text-blue-900 mb-2">市営バスの予約をします</p>
-              <p className="text-blue-900">目的地が表示されない場合はタクシー等の他の公共交通機関をお使いください</p>
+              <p className="text-sm sm:text-base text-blue-900 mb-2">市営バスの予約をします</p>
+              <p className="text-sm sm:text-base text-blue-900">目的地が表示されない場合はタクシー等の他の公共交通機関をお使いください</p>
             </div>
-
-            {/* 路線情報 */}
-            {bookingData.line && (
-              <div className="mb-6">
-                <div className="bg-cyan-50 border-2 border-cyan-400 rounded-2xl p-6">
-                  <p className="text-blue-900 mb-2"><span className="font-semibold">路線:</span> {bookingData.line}</p>
-                </div>
-              </div>
-            )}
 
             {/* 乗車地・降車地 */}
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <div className="flex items-center border-2 border-blue-900 rounded-full overflow-hidden">
-                <div className="bg-cyan-400 text-blue-900 px-6 py-3">乗車地</div>
-                <div className="bg-white text-blue-900 px-8 py-3">{bookingData.departure}</div>
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-cyan-400 text-white px-4 sm:px-6 py-2 rounded-lg min-w-[80px] sm:min-w-[100px] text-center text-sm sm:text-base">
+                  乗車
+                </div>
+                <div className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 text-sm sm:text-base">
+                  {bookingData.departure}
+                </div>
               </div>
-              <ArrowRight className="text-cyan-400" size={40} />
-              <div className="flex items-center border-2 border-blue-900 rounded-full overflow-hidden">
-                <div className="bg-cyan-400 text-blue-900 px-6 py-3">降車地</div>
-                <div className="bg-white text-blue-900 px-8 py-3">{bookingData.arrival}</div>
+              
+              <div className="flex justify-center">
+                <div className="text-cyan-400 text-3xl">↓</div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="bg-cyan-400 text-white px-4 sm:px-6 py-2 rounded-lg min-w-[80px] sm:min-w-[100px] text-center text-sm sm:text-base">
+                  降車地
+                </div>
+                <div className="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 text-sm sm:text-base">
+                  {bookingData.arrival}
+                </div>
               </div>
             </div>
 
-            {/* 片道・往復、日時 */}
-            <div className="bg-gray-200 rounded-3xl p-8 mb-8">
-              <div className="flex items-center gap-4 mb-6">
-                <button 
-                  className={`px-8 py-3 rounded-full border-2 border-blue-900 ${
-                    bookingData.tripType === '片道' 
-                      ? 'bg-gray-300 text-blue-900' 
-                      : 'bg-white text-blue-900'
-                  }`}
-                >
-                  片道
-                </button>
-                <button 
-                  className={`px-8 py-3 rounded-full border-2 border-blue-900 ${
-                    bookingData.tripType === '往復' 
-                      ? 'bg-gray-300 text-blue-900' 
-                      : 'bg-white text-blue-900'
-                  }`}
-                >
-                  往復
-                </button>
-              </div>
+            {/* 片道・往復 */}
+            <div className="flex gap-2 mb-6">
+              <button 
+                className={`px-6 sm:px-8 py-2 rounded-lg text-sm sm:text-base ${
+                  bookingData.tripType === '片道' 
+                    ? 'bg-gray-300 text-black' 
+                    : 'bg-white border-2 border-gray-300 text-black'
+                }`}
+              >
+                片道
+              </button>
+              <button 
+                className={`px-6 sm:px-8 py-2 rounded-lg text-sm sm:text-base ${
+                  bookingData.tripType === '往復' 
+                    ? 'bg-cyan-400 text-white' 
+                    : 'bg-white border-2 border-gray-300 text-black'
+                }`}
+              >
+                往復
+              </button>
+            </div>
 
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-blue-900 min-w-[80px]">日時</span>
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="bg-white border-2 border-blue-900 rounded-lg px-6 py-2">
-                    {bookingData.date}
-                  </div>
-                  <div className="bg-white border-2 border-blue-900 rounded-lg px-4 py-2">
+            {/* 日時 */}
+            <div className="bg-gray-200 rounded-2xl p-4 sm:p-6 mb-6">
+              <div className="mb-4">
+                <div className="text-sm sm:text-base text-gray-700 mb-3">日時</div>
+                <div className="bg-white border-2 border-gray-300 rounded-lg px-4 py-3 mb-3 text-sm sm:text-base">
+                  {bookingData.date}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="bg-white border-2 border-gray-300 rounded-lg px-4 py-2 text-sm sm:text-base">
                     {bookingData.time.split(' ')[0]}
                   </div>
-                  <div className="bg-white border-2 border-blue-900 rounded-lg px-4 py-2">
+                  <div className="bg-white border-2 border-gray-300 rounded-lg px-4 py-2 text-sm sm:text-base">
                     {bookingData.time.split(' ')[1]}
+                  </div>
+                  <div className="bg-cyan-400 text-white px-4 py-2 rounded-lg text-sm sm:text-base">
+                    行き
                   </div>
                 </div>
               </div>
 
               {bookingData.returnDate && bookingData.returnTime && (
-                <div className="flex items-center gap-4 mt-6 flex-wrap">
-                  <span className="text-blue-900 min-w-[80px]">帰還日時</span>
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <div className="bg-white border-2 border-blue-900 rounded-lg px-6 py-2">
-                      {bookingData.returnDate}
-                    </div>
-                    <div className="bg-white border-2 border-blue-900 rounded-lg px-4 py-2">
+                <div className="border-t-2 border-dotted border-gray-400 pt-4">
+                  <div className="bg-white border-2 border-gray-300 rounded-lg px-4 py-3 mb-3 text-sm sm:text-base">
+                    {bookingData.returnDate}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="bg-white border-2 border-gray-300 rounded-lg px-4 py-2 text-sm sm:text-base">
                       {bookingData.returnTime.split(' ')[0]}
                     </div>
-                    <div className="bg-white border-2 border-blue-900 rounded-lg px-4 py-2">
+                    <div className="bg-white border-2 border-gray-300 rounded-lg px-4 py-2 text-sm sm:text-base">
                       {bookingData.returnTime.split(' ')[1]}
+                    </div>
+                    <div className="bg-cyan-400 text-white px-4 py-2 rounded-lg text-sm sm:text-base">
+                      帰り
                     </div>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* 選択したバス情報 */}
-            {bookingData.departureTime && bookingData.arrivalTime && (
-              <div className="mb-8">
-                <h2 className="text-xl text-blue-900 mb-4">選択したバス</h2>
-                
-                {/* 行きのバス */}
-                <div className="bg-cyan-50 border-2 border-cyan-400 rounded-2xl p-6 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-8">
-                      <div>
-                        <div className="text-sm text-gray-600">出発時刻</div>
-                        <div className="text-2xl text-blue-900">{bookingData.departureTime}</div>
-                      </div>
-                      <ArrowRight className="text-cyan-400" size={32} />
-                      <div>
-                        <div className="text-sm text-gray-600">到着時刻</div>
-                        <div className="text-2xl text-blue-900">{bookingData.arrivalTime}</div>
-                      </div>
-                    </div>
-                    <div className="text-blue-900 bg-white px-4 py-2 rounded-lg border-2 border-blue-900">
-                      行き
-                    </div>
-                  </div>
-                </div>
-
-                {/* 帰りのバス（往復の場合） */}
-                {bookingData.returnDepartureTime && bookingData.returnArrivalTime && (
-                  <div className="bg-cyan-50 border-2 border-cyan-400 rounded-2xl p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-8">
-                        <div>
-                          <div className="text-sm text-gray-600">出発時刻</div>
-                          <div className="text-2xl text-blue-900">{bookingData.returnDepartureTime}</div>
-                        </div>
-                        <ArrowRight className="text-cyan-400" size={32} />
-                        <div>
-                          <div className="text-sm text-gray-600">到着時刻</div>
-                          <div className="text-2xl text-blue-900">{bookingData.returnArrivalTime}</div>
-                        </div>
-                      </div>
-                      <div className="text-blue-900 bg-white px-4 py-2 rounded-lg border-2 border-blue-900">
-                        帰り
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* 人数 */}
-            <div className="flex items-center gap-8 mb-12">
-              <span className="text-blue-900">人数</span>
-              <div className="flex items-center gap-4">
-                <span className="text-blue-900">おとな</span>
-                <div className="bg-white border-2 border-blue-900 rounded-lg px-6 py-2">
-                  {bookingData.adults}人
+            <div className="mb-8">
+              <div className="text-sm sm:text-base text-gray-700 mb-3">人数</div>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm sm:text-base">おとな</span>
+                  <div className="bg-white border-2 border-gray-300 rounded-lg px-4 py-2 text-sm sm:text-base min-w-[60px] text-center">
+                    {bookingData.adults}人
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="text-blue-900">こども</span>
-                <div className="bg-white border-2 border-blue-900 rounded-lg px-6 py-2">
-                  {bookingData.children}人
+                <div className="flex items-center gap-2">
+                  <span className="text-sm sm:text-base">こども</span>
+                  <div className="bg-white border-2 border-gray-300 rounded-lg px-4 py-2 text-sm sm:text-base min-w-[60px] text-center">
+                    {bookingData.children}人
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* ボタン */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4">
               <button
                 onClick={onBack}
-                className="bg-green-500 text-white px-12 py-3 rounded-lg hover:bg-green-600 transition-colors"
+                className="w-full bg-green-500 text-white px-8 py-3 rounded-lg hover:bg-green-600 transition-colors text-sm sm:text-base"
               >
                 戻る
               </button>
               <button
                 onClick={onConfirm}
-                className="bg-blue-600 text-white px-12 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >
                 予約確定
               </button>

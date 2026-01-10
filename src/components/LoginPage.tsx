@@ -119,8 +119,8 @@ export function LoginPage({
               </div>
 
               {/* Email */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 italic min-w-[120px]">Email</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 italic sm:min-w-[120px]">Email</label>
                 <input
                   type="email"
                   value={email}
@@ -131,8 +131,8 @@ export function LoginPage({
               </div>
 
               {/* Password */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 min-w-[120px]">パスワード</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 sm:min-w-[120px]">パスワード</label>
                 <div className="flex-1 relative">
                   <input
                     type={showPassword ? 'text' : 'password'}

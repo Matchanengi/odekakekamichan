@@ -65,7 +65,7 @@ export function UserLandingPage({
           <div className="bg-white rounded-[2.5rem] p-6 sm:p-10">
             {/* Title Section */}
             <div className="mb-8 sm:mb-12">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl text-blue-900 mb-4">
+              <h2 className="text-base sm:text-xl font-bold text-blue-900 mb-4">
                 まだ見たことない景色をあなたに
               </h2>
               <div className="text-sm sm:text-base text-blue-800 space-y-1">

@@ -23,7 +23,6 @@ import { NewPasswordPage } from './components/NewPasswordPage';
 import { BookingConfirmPage } from './components/BookingConfirmPage';
 import { BookingCompletePage } from './components/BookingCompletePage';
 import { BusResultsPage } from './components/BusResultsPage';
-//App.cssを追加
 import './App.css';
 
 type MainPage = 'top' | 'reservations' | 'new-reservation' | 'notifications' | 'member' | 'contact';

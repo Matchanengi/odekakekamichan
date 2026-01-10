@@ -17,8 +17,34 @@ interface ReservationManagementPageProps {
 export function ReservationManagementPage({
   onNavigate,
 }: ReservationManagementPageProps) {
-  const [startDate, setStartDate] = useState("2025/11/18");
-  const [endDate, setEndDate] = useState("2025/11/18");
+  const [startDate, setStartDate] = useState("2025-11-18");
+  const [endDate, setEndDate] = useState("2025-11-18");
+  
+  // 日付入力の自動フォーマット関数
+  const handleDateInput = (value: string) => {
+    // 数字のみを抽出
+    const numbers = value.replace(/[^\d]/g, '');
+    
+    // 8桁以上なら自動でフォーマット
+    if (numbers.length >= 8) {
+      const year = numbers.slice(0, 4);
+      const month = numbers.slice(4, 6);
+      const day = numbers.slice(6, 8);
+      return `${year}-${month}-${day}`;
+    } else if (numbers.length >= 6) {
+      const year = numbers.slice(0, 4);
+      const month = numbers.slice(4, 6);
+      const day = numbers.slice(6);
+      return `${year}-${month}-${day}`;
+    } else if (numbers.length >= 4) {
+      const year = numbers.slice(0, 4);
+      const month = numbers.slice(4);
+      return `${year}-${month}`;
+    }
+    
+    return numbers;
+  };
+  
   const [route, setRoute] = useState("すべての路線");
   const [status, setStatus] = useState("承認待ち");
   const [selectedReservation, setSelectedReservation] =
@@ -100,15 +126,17 @@ export function ReservationManagementPage({
                       type="text"
                       value={startDate}
                       onChange={(e) =>
-                        setStartDate(e.target.value)
+                        setStartDate(handleDateInput(e.target.value))
                       }
+                      placeholder="YYYYMMDD"
                       className="border-4 border-black rounded-lg px-3 sm:px-4 py-2 w-full sm:w-64 text-sm sm:text-base"
                     />
                     <span className="text-center sm:text-left">～</span>
                     <input
                       type="text"
                       value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
+                      onChange={(e) => setEndDate(handleDateInput(e.target.value))}
+                      placeholder="YYYYMMDD"
                       className="border-4 border-black rounded-lg px-3 sm:px-4 py-2 w-full sm:w-64 text-sm sm:text-base"
                     />
                   </div>
