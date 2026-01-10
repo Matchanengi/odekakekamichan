@@ -47,7 +47,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
 
   // 指定時刻から30分前後のバス候補を生成
   const generateBuses = (targetTime: string): Bus[] => {
-    const [hourStr, minuteStr] = targetTime.split(' ');
+    const [hourStr, minuteStr] = targetTime.split(':');
     const hour = parseInt(hourStr);
     const minute = parseInt(minuteStr);
     
@@ -149,8 +149,8 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
                         : 'border-gray-300 bg-white hover:border-cyan-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 sm:gap-6">
                         <div className="text-left">
                           <div className="text-sm text-gray-600">出発</div>
                           <div className="text-xl">{bus.departureTime}</div>
@@ -161,7 +161,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
                           <div className="text-xl">{bus.arrivalTime}</div>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right">
                         <div className="text-sm text-gray-600">空席</div>
                         <div className={`text-lg ${bus.availableSeats < 3 ? 'text-red-600' : 'text-green-600'}`}>
                           {bus.availableSeats}/{bus.totalSeats}席
@@ -188,8 +188,8 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
                           : 'border-gray-300 bg-white hover:border-cyan-300'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-6">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 sm:gap-6">
                           <div className="text-left">
                             <div className="text-sm text-gray-600">出発</div>
                             <div className="text-xl">{bus.departureTime}</div>
@@ -200,7 +200,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
                             <div className="text-xl">{bus.arrivalTime}</div>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-left sm:text-right">
                           <div className="text-sm text-gray-600">空席</div>
                           <div className={`text-lg ${bus.availableSeats < 3 ? 'text-red-600' : 'text-green-600'}`}>
                             {bus.availableSeats}/{bus.totalSeats}席
@@ -214,17 +214,17 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
             )}
 
             {/* ボタン */}
-            <div className="flex items-center justify-between mt-8">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
               <button
                 onClick={onBack}
-                className="bg-gray-400 text-white px-12 py-3 rounded-lg hover:bg-gray-500 transition-colors"
+                className="w-full sm:w-auto bg-gray-400 text-white px-12 py-3 rounded-lg hover:bg-gray-500 transition-colors"
               >
                 戻る
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={isConfirmDisabled}
-                className={`px-12 py-3 rounded-lg transition-colors ${
+                className={`w-full sm:w-auto px-12 py-3 rounded-lg transition-colors ${
                   isConfirmDisabled
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700'

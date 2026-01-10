@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ImageWithFallback } from './figma/ImageWithFallback';
-//画像は適当
 import routeMapImage from "../../png/0c7dbf9de4fe44c2e056ffc2a1bda5ea6e175f23.png";
 
 interface RouteMapPageProps {

@@ -11,6 +11,10 @@ const busStops = [
 
 const busLines = ['町田線', 'やまださくら線'];
 
+// 時間と分の選択肢を生成
+const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+const minutes = ['00', '10', '20', '30', '40', '50'];
+
 interface UserBusBookingPageProps {
   onShowRouteMap?: () => void;
   onShowBusResults?: (searchData: {
@@ -34,19 +38,44 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
   const [arrivalLocation, setArrivalLocation] = useState('');
   
   // Outbound trip
-  const [outboundDate, setOutboundDate] = useState('11月20日（木）');
-  const [outboundHour, setOutboundHour] = useState('12時');
-  const [outboundMinute, setOutboundMinute] = useState('00分');
+  const [outboundDate, setOutboundDate] = useState('2025-11-20');
+  const [outboundHour, setOutboundHour] = useState('12');
+  const [outboundMinute, setOutboundMinute] = useState('00');
   
   // Return trip
-  const [returnDate, setReturnDate] = useState('11月20日（木）');
-  const [returnHour, setReturnHour] = useState('12時');
-  const [returnMinute, setReturnMinute] = useState('00分');
+  const [returnDate, setReturnDate] = useState('2025-11-20');
+  const [returnHour, setReturnHour] = useState('12');
+  const [returnMinute, setReturnMinute] = useState('00');
   
-  const [adults, setAdults] = useState('1人');
-  const [children, setChildren] = useState('0人');
+  // 日付入力の自動フォーマット関数
+  const handleDateInput = (value: string) => {
+    // 数字のみを抽出
+    const numbers = value.replace(/[^\d]/g, '');
+    
+    // 8桁以上なら自動でフォーマット
+    if (numbers.length >= 8) {
+      const year = numbers.slice(0, 4);
+      const month = numbers.slice(4, 6);
+      const day = numbers.slice(6, 8);
+      return `${year}-${month}-${day}`;
+    } else if (numbers.length >= 6) {
+      const year = numbers.slice(0, 4);
+      const month = numbers.slice(4, 6);
+      const day = numbers.slice(6);
+      return `${year}-${month}-${day}`;
+    } else if (numbers.length >= 4) {
+      const year = numbers.slice(0, 4);
+      const month = numbers.slice(4);
+      return `${year}-${month}`;
+    }
+    
+    return numbers;
+  };
+  
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
 
-  // 選択された路線の停留所のみをフィルタリング
+  // ���択された路線の停留所のみをフィルタリング
   const availableStops = useMemo(() => {
     return busStops.filter(stop => stop.line === selectedLine).map(stop => stop.name);
   }, [selectedLine]);
@@ -146,40 +175,38 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
           {/* Outbound Date and Time Selection */}
           <div className="space-y-4">
             <div className="flex items-center gap-4 flex-wrap">
-              <span className="min-w-[60px]">日時</span>
-              <select
+              <span className="min-w-[60px]">日付</span>
+              <input
+                type="text"
                 value={outboundDate}
-                onChange={(e) => setOutboundDate(e.target.value)}
+                onChange={(e) => setOutboundDate(handleDateInput(e.target.value))}
+                placeholder="YYYYMMDD"
                 className="flex-1 min-w-[200px] border-2 border-black rounded-lg px-4 py-2 bg-white"
-              >
-                <option>11月20日（木）</option>
-                <option>11月21日（金）</option>
-                <option>11月22日（土）</option>
-                <option>11月23日（日）</option>
-                <option>11月24日（月）</option>
-              </select>
+              />
             </div>
 
             <div className="flex items-center gap-4 flex-wrap">
-              <span className="min-w-[60px]"></span>
-              <select
-                value={outboundHour}
-                onChange={(e) => setOutboundHour(e.target.value)}
-                className="w-[120px] border-2 border-black rounded-lg px-4 py-2 bg-white"
-              >
-                {Array.from({ length: 24 }, (_, i) => (
-                  <option key={i}>{String(i).padStart(2, '0')}時</option>
-                ))}
-              </select>
-              <select
-                value={outboundMinute}
-                onChange={(e) => setOutboundMinute(e.target.value)}
-                className="w-[120px] border-2 border-black rounded-lg px-4 py-2 bg-white"
-              >
-                {['00', '15', '30', '45'].map((m) => (
-                  <option key={m}>{m}分</option>
-                ))}
-              </select>
+              <span className="min-w-[60px]">時刻</span>
+              <div className="flex items-center gap-2">
+                <select
+                  value={outboundHour}
+                  onChange={(e) => setOutboundHour(e.target.value)}
+                  className="border-2 border-black rounded-lg px-4 py-2 bg-white"
+                >
+                  {hours.map((h) => (
+                    <option key={h} value={h}>{h}時</option>
+                  ))}
+                </select>
+                <select
+                  value={outboundMinute}
+                  onChange={(e) => setOutboundMinute(e.target.value)}
+                  className="border-2 border-black rounded-lg px-4 py-2 bg-white"
+                >
+                  {minutes.map((m) => (
+                    <option key={m} value={m}>{m}分</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -192,40 +219,38 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
               {/* Return Date and Time Selection */}
               <div className="space-y-4">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <span className="min-w-[60px]">日時</span>
-                  <select
+                  <span className="min-w-[60px]">日付</span>
+                  <input
+                    type="text"
                     value={returnDate}
-                    onChange={(e) => setReturnDate(e.target.value)}
+                    onChange={(e) => setReturnDate(handleDateInput(e.target.value))}
+                    placeholder="YYYYMMDD"
                     className="flex-1 min-w-[200px] border-2 border-black rounded-lg px-4 py-2 bg-white"
-                  >
-                    <option>11月20日（木）</option>
-                    <option>11月21日（金）</option>
-                    <option>11月22日（土）</option>
-                    <option>11月23日（日）</option>
-                    <option>11月24日（月）</option>
-                  </select>
+                  />
                 </div>
 
                 <div className="flex items-center gap-4 flex-wrap">
-                  <span className="min-w-[60px]"></span>
-                  <select
-                    value={returnHour}
-                    onChange={(e) => setReturnHour(e.target.value)}
-                    className="w-[120px] border-2 border-black rounded-lg px-4 py-2 bg-white"
-                  >
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <option key={i}>{String(i).padStart(2, '0')}時</option>
-                    ))}
-                  </select>
-                  <select
-                    value={returnMinute}
-                    onChange={(e) => setReturnMinute(e.target.value)}
-                    className="w-[120px] border-2 border-black rounded-lg px-4 py-2 bg-white"
-                  >
-                    {['00', '15', '30', '45'].map((m) => (
-                      <option key={m}>{m}分</option>
-                    ))}
-                  </select>
+                  <span className="min-w-[60px]">時刻</span>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={returnHour}
+                      onChange={(e) => setReturnHour(e.target.value)}
+                      className="border-2 border-black rounded-lg px-4 py-2 bg-white"
+                    >
+                      {hours.map((h) => (
+                        <option key={h} value={h}>{h}時</option>
+                      ))}
+                    </select>
+                    <select
+                      value={returnMinute}
+                      onChange={(e) => setReturnMinute(e.target.value)}
+                      className="border-2 border-black rounded-lg px-4 py-2 bg-white"
+                    >
+                      {minutes.map((m) => (
+                        <option key={m} value={m}>{m}分</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </>
@@ -233,31 +258,41 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
         </div>
 
         {/* Number of Passengers */}
-        <div className="flex items-center gap-6 mb-6 flex-wrap">
-          <span className="text-lg">人数</span>
-          <div className="flex items-center gap-2">
-            <span>おとな</span>
-            <select
-              value={adults}
-              onChange={(e) => setAdults(e.target.value)}
-              className="w-[100px] border-2 border-black rounded-lg px-4 py-2 bg-white"
-            >
-              {Array.from({ length: 10 }, (_, i) => (
-                <option key={i}>{i}人</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span>こども</span>
-            <select
-              value={children}
-              onChange={(e) => setChildren(e.target.value)}
-              className="w-[100px] border-2 border-black rounded-lg px-4 py-2 bg-white"
-            >
-              {Array.from({ length: 10 }, (_, i) => (
-                <option key={i}>{i}人</option>
-              ))}
-            </select>
+        <div className="mb-6">
+          <div className="text-lg mb-3">人数</div>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span>おとな</span>
+              <input
+                type="text"
+                value={`${adults}人`}
+                readOnly
+                onClick={() => {
+                  const num = prompt('おとなの人数を入力してください（0-9）', adults.toString());
+                  if (num !== null && !isNaN(parseInt(num))) {
+                    const parsed = Math.max(0, Math.min(9, parseInt(num)));
+                    setAdults(parsed);
+                  }
+                }}
+                className="w-[80px] border-2 border-black rounded-lg px-3 py-2 bg-white text-center cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span>こども</span>
+              <input
+                type="text"
+                value={`${children}人`}
+                readOnly
+                onClick={() => {
+                  const num = prompt('こどもの人数を入力してください（0-9）', children.toString());
+                  if (num !== null && !isNaN(parseInt(num))) {
+                    const parsed = Math.max(0, Math.min(9, parseInt(num)));
+                    setChildren(parsed);
+                  }
+                }}
+                className="w-[80px] border-2 border-black rounded-lg px-3 py-2 bg-white text-center cursor-pointer"
+              />
+            </div>
           </div>
         </div>
 
@@ -279,11 +314,11 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
                   arrival: arrivalLocation,
                   tripType: tripType === 'one-way' ? '片道' : '往復',
                   outboundDate: outboundDate,
-                  outboundTime: `${outboundHour} ${outboundMinute}`,
+                  outboundTime: `${outboundHour}:${outboundMinute}`,
                   returnDate: tripType === 'round-trip' ? returnDate : undefined,
-                  returnTime: tripType === 'round-trip' ? `${returnHour} ${returnMinute}` : undefined,
-                  adults: parseInt(adults),
-                  children: parseInt(children),
+                  returnTime: tripType === 'round-trip' ? `${returnHour}:${returnMinute}` : undefined,
+                  adults: adults,
+                  children: children,
                 });
               }
             }}

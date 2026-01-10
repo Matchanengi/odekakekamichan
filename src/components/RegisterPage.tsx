@@ -54,8 +54,8 @@ export function RegisterPage({ onShowConfirm }: RegisterPageProps) {
 
             <div className="max-w-2xl mx-auto space-y-8">
               {/* Last Name */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 min-w-[140px]">氏名</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 sm:min-w-[140px]">氏名</label>
                 <input
                   type="text"
                   value={lastName}
@@ -66,8 +66,8 @@ export function RegisterPage({ onShowConfirm }: RegisterPageProps) {
               </div>
 
               {/* First Name */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 min-w-[140px]">名前</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 sm:min-w-[140px]">名前</label>
                 <input
                   type="text"
                   value={firstName}
@@ -78,8 +78,8 @@ export function RegisterPage({ onShowConfirm }: RegisterPageProps) {
               </div>
 
               {/* Email */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 italic min-w-[140px]">Email</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 italic sm:min-w-[140px]">Email</label>
                 <input
                   type="email"
                   value={email}
@@ -89,8 +89,8 @@ export function RegisterPage({ onShowConfirm }: RegisterPageProps) {
               </div>
 
               {/* Password */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 min-w-[140px]">パスワード</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 sm:min-w-[140px]">パスワード</label>
                 <div className="flex-1 relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -113,8 +113,8 @@ export function RegisterPage({ onShowConfirm }: RegisterPageProps) {
               </div>
 
               {/* Confirm Password */}
-              <div className="flex items-center gap-8">
-                <label className="text-blue-900 min-w-[140px]">確認用パスワード</label>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8">
+                <label className="text-blue-900 sm:min-w-[140px]">確認用パスワード</label>
                 <div className="flex-1 relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}

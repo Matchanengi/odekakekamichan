@@ -1,5 +1,4 @@
 import { useState } from 'react';
-//画像は適当
 import mapImage from "../../png/0c7dbf9de4fe44c2e056ffc2a1bda5ea6e175f23.png";
 
 export function MapPage() {

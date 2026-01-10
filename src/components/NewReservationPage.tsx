@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Plus, Minus } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 type MainPage =
   | "top"
@@ -15,7 +15,33 @@ interface NewReservationPageProps {
 export function NewReservationPage({
   onNavigate,
 }: NewReservationPageProps) {
-  const [rideDate, setRideDate] = useState("2025/11/18");
+  const [rideDate, setRideDate] = useState("2025-11-18");
+  
+  // 日付入力の自動フォーマット関数
+  const handleDateInput = (value: string) => {
+    // 数字のみを抽出
+    const numbers = value.replace(/[^\d]/g, '');
+    
+    // 8桁以上なら自動でフォーマット
+    if (numbers.length >= 8) {
+      const year = numbers.slice(0, 4);
+      const month = numbers.slice(4, 6);
+      const day = numbers.slice(6, 8);
+      return `${year}-${month}-${day}`;
+    } else if (numbers.length >= 6) {
+      const year = numbers.slice(0, 4);
+      const month = numbers.slice(4, 6);
+      const day = numbers.slice(6);
+      return `${year}-${month}-${day}`;
+    } else if (numbers.length >= 4) {
+      const year = numbers.slice(0, 4);
+      const month = numbers.slice(4);
+      return `${year}-${month}`;
+    }
+    
+    return numbers;
+  };
+  
   const [route, setRoute] = useState("蕨野線");
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
@@ -23,7 +49,7 @@ export function NewReservationPage({
   const [boardingLocation, setBoardingLocation] =
     useState("山田駅");
   const [dropoffLocation, setDropoffLocation] =
-    useState("いずみの広場");
+    useState("izuみの広場");
   const [isRoundTrip, setIsRoundTrip] = useState(true);
   const [representativeName, setRepresentativeName] =
     useState("山田　太郎");
@@ -106,13 +132,11 @@ export function NewReservationPage({
                     type="text"
                     value={rideDate}
                     onChange={(e) =>
-                      setRideDate(e.target.value)
+                      setRideDate(handleDateInput(e.target.value))
                     }
+                    placeholder="YYYYMMDD"
                     className="border-2 border-black rounded-lg px-3 sm:px-4 py-2 w-full sm:w-64 text-sm sm:text-base"
                   />
-                  <span className="text-gray-500 text-xs sm:text-sm">
-                    （カレンダーから選択）
-                  </span>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
@@ -206,54 +230,38 @@ export function NewReservationPage({
                   <div className="text-sm sm:text-base">
                     <span className="text-red-600">*</span>人数
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 w-full sm:w-auto">
+                  <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
                       <span className="text-sm sm:text-base">おとな</span>
-                      <button
-                        onClick={() =>
-                          setAdults(Math.max(0, adults - 1))
-                        }
-                        className="border-2 border-black rounded w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center"
-                      >
-                        <Minus size={16} />
-                      </button>
                       <input
                         type="text"
-                        value={adults}
+                        value={`${adults}人`}
                         readOnly
-                        className="border-2 border-black rounded px-3 sm:px-4 py-1 w-12 sm:w-16 text-center text-sm sm:text-base"
+                        onClick={() => {
+                          const num = prompt('おとなの人数を入力してください（0-9）', adults.toString());
+                          if (num !== null && !isNaN(parseInt(num))) {
+                            const parsed = Math.max(0, Math.min(9, parseInt(num)));
+                            setAdults(parsed);
+                          }
+                        }}
+                        className="w-[80px] border-2 border-black rounded-lg px-3 py-1 bg-white text-center cursor-pointer text-sm sm:text-base"
                       />
-                      <button
-                        onClick={() => setAdults(adults + 1)}
-                        className="border-2 border-black rounded w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center"
-                      >
-                        <Plus size={16} />
-                      </button>
-                      <span className="text-sm sm:text-base">名</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm sm:text-base">こども</span>
-                      <button
-                        onClick={() =>
-                          setChildren(Math.max(0, children - 1))
-                        }
-                        className="border-2 border-black rounded w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center"
-                      >
-                        <Minus size={16} />
-                      </button>
                       <input
                         type="text"
-                        value={children}
+                        value={`${children}人`}
                         readOnly
-                        className="border-2 border-black rounded px-3 sm:px-4 py-1 w-12 sm:w-16 text-center text-sm sm:text-base"
+                        onClick={() => {
+                          const num = prompt('こどもの人数を入力してください（0-9）', children.toString());
+                          if (num !== null && !isNaN(parseInt(num))) {
+                            const parsed = Math.max(0, Math.min(9, parseInt(num)));
+                            setChildren(parsed);
+                          }
+                        }}
+                        className="w-[80px] border-2 border-black rounded-lg px-3 py-1 bg-white text-center cursor-pointer text-sm sm:text-base"
                       />
-                      <button
-                        onClick={() => setChildren(children + 1)}
-                        className="border-2 border-black rounded w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center"
-                      >
-                        <Plus size={16} />
-                      </button>
-                      <span className="text-sm sm:text-base">名</span>
                     </div>
                   </div>
                 </div>

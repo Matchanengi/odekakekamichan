@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sidebar } from './Sidebar';
+import { Sidebar } from '../components/Sidebar';
 import { ApprovalsPage } from './ApprovalsPage';
 import { DashboardPage } from './DashboardPage';
 import { DeparturesPage } from './DeparturesPage';

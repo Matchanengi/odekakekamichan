@@ -8,7 +8,7 @@ interface SidebarProps {
 export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   return (
     <aside className="w-full md:w-64">
-      <div className="space-y-4 md:space-y-4 flex flex-row md:flex-col gap-2 md:gap-0">
+      <div className="space-y-4 flex flex-col">
         <button
           onClick={() => onPageChange('dashboard')}
           className={`w-full py-4 md:py-6 px-4 md:px-6 rounded-2xl border-4 text-center text-lg md:text-xl ${

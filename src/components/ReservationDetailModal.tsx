@@ -21,9 +21,9 @@ export function ReservationDetailModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-green-700 rounded-3xl p-8 w-[1100px] max-w-[90vw]">
-        <div className="bg-white rounded-3xl p-8 relative">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-green-700 rounded-3xl p-4 sm:p-8 w-full max-w-[1100px] max-h-[90vh] overflow-hidden">
+        <div className="bg-white rounded-3xl p-4 sm:p-8 relative max-h-[calc(90vh-2rem)] sm:max-h-[calc(90vh-4rem)] overflow-y-auto">
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -32,80 +32,78 @@ export function ReservationDetailModal({
             <X size={32} />
           </button>
 
-          {/* Title */}
-          <h2 className="text-2xl mb-6">
-            ・予約詳細：{reservation.name} 様（ID：A0
-            {reservation.id.toString().padStart(4, "0")}）
-          </h2>
+          {/* Title Section */}
+          <div className="mb-6 pr-12">
+            <h2 className="text-xl sm:text-2xl mb-4">予約詳細</h2>
+            <div className="space-y-3">
+              <div>
+                <div className="text-sm text-gray-700 mb-1">代表者名</div>
+                <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100">
+                  {reservation.name} 様
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-700 mb-1">予約ID</div>
+                <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100">
+                  A0{reservation.id.toString().padStart(4, "0")}
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Reservation Information Section */}
           <div className="mb-6">
-            <h3 className="mb-4">予約情報</h3>
+            <h3 className="mb-4 text-lg sm:text-xl">予約情報</h3>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="bg-green-700 text-white px-6 py-2 rounded-lg min-w-[120px]">
-                  ステータス
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-700 mb-1">ステータス</div>
+                  <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100">
+                    {reservation.status}
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={reservation.status}
-                  readOnly
-                  className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100 flex-1"
-                />
-
-                <div className="bg-green-700 text-white px-6 py-2 rounded-lg min-w-[120px]">
-                  乗車日時
+                <div>
+                  <div className="text-sm text-gray-700 mb-1">乗車日時</div>
+                  <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100">
+                    2025 年 11 月 18 日(火) 09:30
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={`2025 年 11 月 18 日(火) 09:30`}
-                  readOnly
-                  className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100 flex-1"
-                />
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="bg-green-700 text-white px-6 py-2 rounded-lg min-w-[120px]">
-                  路線名
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-700 mb-1">路線名</div>
+                  <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100">
+                    蕨野線（山田駅 発）
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={`蕨野線（山田駅 発）`}
-                  readOnly
-                  className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100 flex-1"
-                />
-
-                <div className="bg-green-700 text-white px-6 py-2 rounded-lg min-w-[120px]">
-                  乗降場所
+                <div>
+                  <div className="text-sm text-gray-700 mb-1">乗降場所</div>
+                  <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100">
+                    [乗] 山田駅 → [降] いずみの広場
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={`[乗] 山田駅 → [降] いずみの広場`}
-                  readOnly
-                  className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100 flex-1"
-                />
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="bg-green-700 text-white px-6 py-2 rounded-lg min-w-[120px]">
-                  人数
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-700 mb-1">人数</div>
+                  <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100">
+                    おとな{reservation.people}名 こども0名
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={`おとな${reservation.people}名 こども0名`}
-                  readOnly
-                  className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100 w-80"
-                />
-
-                <div className="flex items-center gap-2">
-                  <span>往復</span>
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    readOnly
-                    className="w-6 h-6"
-                  />
+                <div>
+                  <div className="text-sm text-gray-700 mb-1">往復</div>
+                  <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100 flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      readOnly
+                      className="w-6 h-6 mr-2"
+                    />
+                    <span>往復便</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -113,36 +111,29 @@ export function ReservationDetailModal({
 
           {/* Customer Information Section */}
           <div className="mb-6">
-            <h3 className="mb-4">お客様情報</h3>
+            <h3 className="mb-4 text-lg sm:text-xl">お客様情報</h3>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="bg-green-700 text-white px-6 py-2 rounded-lg min-w-[120px]">
-                  氏名
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-700 mb-1">氏名</div>
+                  <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100">
+                    {reservation.name}
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={reservation.name}
-                  readOnly
-                  className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100 flex-1"
-                />
-
-                <div className="bg-green-700 text-white px-6 py-2 rounded-lg min-w-[120px]">
-                  電話番号
+                <div>
+                  <div className="text-sm text-gray-700 mb-1">電話番号</div>
+                  <div className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100">
+                    090-1234-5678
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value="090-1234-5678"
-                  readOnly
-                  className="border-2 border-black rounded-lg px-4 py-2 bg-gray-100 flex-1"
-                />
               </div>
             </div>
           </div>
 
           {/* Response History Memo Section */}
           <div className="mb-6">
-            <div className="mb-2">対応履歴メモ（追記可）：</div>
+            <div className="text-sm text-gray-700 mb-2">対応履歴メモ（追記可）</div>
             <textarea
               defaultValue="電話にて予約受付（担当：佐藤）"
               className="border-2 border-black rounded-lg px-4 py-2 w-full h-32"
@@ -151,16 +142,16 @@ export function ReservationDetailModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 justify-center mt-8">
-            <button className="bg-green-700 text-white px-12 py-3 rounded-lg">
+          <div className="flex flex-col gap-3 mt-8 max-w-md mx-auto">
+            <button className="bg-green-700 text-white px-12 py-3 rounded-lg w-full">
               予約を承認する
             </button>
-            <button className="bg-white border-2 border-red-600 text-red-600 px-12 py-3 rounded-lg">
+            <button className="bg-white border-2 border-red-600 text-red-600 px-12 py-3 rounded-lg w-full">
               予約を却下する
             </button>
             <button
               onClick={onClose}
-              className="bg-white border-2 border-black px-12 py-3 rounded-lg"
+              className="bg-white border-2 border-black px-12 py-3 rounded-lg w-full"
             >
               保存して閉じる
             </button>
