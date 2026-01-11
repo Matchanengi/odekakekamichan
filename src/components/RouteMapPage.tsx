@@ -1,25 +1,25 @@
-import { useState } from "react";
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import routeMapImage from "../../png/0c7dbf9de4fe44c2e056ffc2a1bda5ea6e175f23.png";
+//import { useState } from "react";
+//import { ImageWithFallback } from './figma/ImageWithFallback';
+import routeMapImage from "../../img/routemap.pdf";
 
 interface RouteMapPageProps {
   onBack?: () => void;
 }
 
 export function RouteMapPage({ onBack }: RouteMapPageProps) {
-  const [zoom, setZoom] = useState(100);
+  // const [zoom, setZoom] = useState(100);
 
-  const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 25, 200));
-  };
+  // const handleZoomIn = () => {
+  //   setZoom(prev => Math.min(prev + 25, 200));
+  // };
 
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 25, 50));
-  };
+  // const handleZoomOut = () => {
+  //   setZoom(prev => Math.max(prev - 25, 50));
+  // };
 
-  const handleReset = () => {
-    setZoom(100);
-  };
+  // const handleReset = () => {
+  //   setZoom(100);
+  // };
 
   return (
     <div className="bg-cyan-400 rounded-3xl p-4 sm:p-8 mx-4 my-6">
@@ -31,22 +31,24 @@ export function RouteMapPage({ onBack }: RouteMapPageProps) {
         {/* Route Map Image Container */}
         <div className="bg-gray-100 rounded-2xl p-4 mb-6 overflow-auto">
           <div 
-            className="transition-transform duration-300 origin-top-left"
-            style={{ 
-              transform: `scale(${zoom / 100})`,
-              width: `${100 / (zoom / 100)}%`
-            }}
+            className="w-full h-[60vh] sm:h-[75vh]"
+            // style={{ 
+            //   transform: `scale(${zoom / 100})`,
+            //   width: `${100 / (zoom / 100)}%`
+            // }}
           >
-            <ImageWithFallback
+            <embed
               src={routeMapImage}
-              alt="香美市公共交通系統図"
-              className="w-full h-auto"
+              type="application/pdf"
+              width="100%"
+              height="100%"
+              className="rounded-xl"
             />
           </div>
         </div>
 
         {/* Zoom Controls */}
-        <div className="flex items-center justify-center gap-6 mb-6">
+        {/* <div className="flex items-center justify-center gap-6 mb-6">
           <button
             onClick={handleReset}
             className="text-2xl px-6 py-3 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition-colors min-w-[120px]"
@@ -65,7 +67,7 @@ export function RouteMapPage({ onBack }: RouteMapPageProps) {
           >
             縮小
           </button>
-        </div>
+        </div> */}
 
         {/* Back Button (optional) */}
         {onBack && (

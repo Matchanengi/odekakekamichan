@@ -1,16 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
-
-// 停留所データ（路線情報を含む）
+import { supabase } from './supabaseClient';
+//import { FormItem } from "./ui/form";
 const busStops = [
-  { id: 1, name: '山田駅前', line: '町田線' },
-  { id: 2, name: '下ノ村', line: '町田線' },
-  { id: 3, name: '山田駅前', line: 'やまださくら線' },
-  { id: 4, name: '宮ノ下', line: 'やまださくら線' },
-];
-
-const busLines = ['町田線', 'やまださくら線'];
-
+    { id: 1, name: '山田駅前', line: '町田線' },
+    { id: 2, name: '下ノ村', line: '町田線' },
+    { id: 3, name: '山田駅前', line: 'やまださくら線' },
+    { id: 4, name: '宮ノ下', line: 'やまださくら線' },
+  ];
 // 時間と分の選択肢を生成
 const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
 const minutes = ['00', '10', '20', '30', '40', '50'];
@@ -75,17 +72,97 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
 
-  // ���択された路線の停留所のみをフィルタリング
-  const availableStops = useMemo(() => {
-    return busStops.filter(stop => stop.line === selectedLine).map(stop => stop.name);
-  }, [selectedLine]);
+  const [availableStops, setAvailableStops] = useState<{id: any, name: string}[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // 路線が変更されたら停留所をリセット
-  const handleLineChange = (line: string) => {
-    setSelectedLine(line);
+  // 路線が変更されたときの処理
+  const handleLineChange = async (lineName: string) => {
+    setSelectedLine(lineName);
     setDepartureLocation('');
     setArrivalLocation('');
+
+    if (!lineName) {
+      setAvailableStops([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 選択された「路線名」から「路線ID」を取得
+      const { data: routeData } = await supabase
+        .from('バス路線')
+        .select('route_id')
+        .eq('route_name', lineName)
+        .single();
+
+      if (routeData) {
+        // route_id_1から4 のいずれかに一致する停留所を取得
+        const { data, error } = await supabase
+          .from('停留所')
+          .select('stop_id, stop_name')
+          .or(`route_id_1.eq.${routeData.route_id},route_id_2.eq.${routeData.route_id},route_id_3.eq.${routeData.route_id},route_id_4.eq.${routeData.route_id}`);
+
+        if (error) throw error;
+        if (data) {
+          // ここで型を合わせるためにデータを変換する
+          const formattedStops = data.map((item) => ({
+            id: item.stop_id,    // stop_id を id に入れる
+            name: item.stop_name // stop_name を name に入れる
+          }));  
+            setAvailableStops(formattedStops);
+        } else {
+            setAvailableStops([]);
+        }        
+      }
+    } catch (err) {
+      console.error("停留所の取得に失敗しました", err);
+    } finally {
+      setLoading(false);
+    }
   };
+  const [busLines, setBusLines] = useState<string[]>([]);
+  // const busLines = ['町田線', 'やまださくら線'];
+  //const [busStops, setBusStops] = useState([]);  
+  
+  function BusLineList() {
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+      const fetchBusLines = async () => {
+        console.log("取得開始..."); // 動いているか確認
+        try{
+          setLoading(true);
+          //supabaseからデータ取得
+          const{ data, error } = await supabase
+          .from('バス路線')          
+          .select('route_name');
+
+          if (error) throw error;
+          console.log("バス路線取得データ:", data); // 取得確認用
+          if (data) {
+            //データ整形
+            const lineArray = data.map((item) => item.route_name);
+            setBusLines(lineArray);    
+          }      
+        } catch (error) {
+          console.error('Error fetching bus Lines:', error);        
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchBusLines();
+    }, []);
+    if (loading) return <div>読み込み中...</div>;
+
+    return (
+      <ul>
+        {busLines.map((line, index) => (
+          <li key={index}>{line}</li>
+        ))}
+      </ul>
+    );
+  }
+  BusLineList();
 
   return (
     <div className="bg-cyan-400 rounded-3xl p-4 sm:p-8 mx-4 my-6">
@@ -121,10 +198,14 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
               value={departureLocation}
               onChange={(e) => setDepartureLocation(e.target.value)}
               className="flex-1 border-2 border-black rounded-lg px-4 py-2 bg-white"
+              disabled={loading} // 読み込み中は操作不能にする
             >
-              <option value="">選択してください</option>
+              <option value="">{loading ? "読み込み中..." : "選択してください"}</option>
               {availableStops.map((stop) => (
-                <option key={stop} value={stop}>{stop}</option>
+                // keyにはID、表示とvalueには名前（またはID）を使用
+                <option key={stop.id} value={stop.name}>
+                  {stop.name}
+                </option>
               ))}
             </select>
           </div>
@@ -140,7 +221,7 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
             >
               <option value="">選択してください</option>
               {availableStops.map((stop) => (
-                <option key={stop} value={stop}>{stop}</option>
+                <option key={stop.id} value={stop.name}>{stop.name}</option>
               ))}
             </select>
           </div>
@@ -299,7 +380,7 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
         {/* Notice */}
         <div className="mb-6 text-blue-600 text-sm">
           <p>※こどもの区分は12歳以下です。</p>
-          <p>体に障害があり、お手伝いを必要とする方は営業所にもあますぐご連絡ください</p>
+          <p>体に障害があり、お手伝いを必要とする方は営業所にもいますぐご連絡ください</p>
         </div>
 
         {/* Action Buttons */}

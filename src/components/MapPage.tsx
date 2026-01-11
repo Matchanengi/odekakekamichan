@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import mapImage from "../../png/0c7dbf9de4fe44c2e056ffc2a1bda5ea6e175f23.png";
+import mapImage from "../../img/0c7dbf9de4fe44c2e056ffc2a1bda5ea6e175f23.png";
 
 export function MapPage() {
   const [zoom, setZoom] = useState(100);
