@@ -165,6 +165,7 @@ export default function App() {
         )}
         {currentUserPage === 'new-password' && (
           <NewPasswordPage 
+            email={resetEmail} // ★これを追加！
             onComplete={() => setCurrentUserPage('login')}
           />
         )}
