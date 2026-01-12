@@ -1,13 +1,13 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import { supabase } from './supabaseClient';
 //import { FormItem } from "./ui/form";
-const busStops = [
-    { id: 1, name: '山田駅前', line: '町田線' },
-    { id: 2, name: '下ノ村', line: '町田線' },
-    { id: 3, name: '山田駅前', line: 'やまださくら線' },
-    { id: 4, name: '宮ノ下', line: 'やまださくら線' },
-  ];
+// const busStops = [
+//     { id: 1, name: '山田駅前', line: '町田線' },
+//     { id: 2, name: '下ノ村', line: '町田線' },
+//     { id: 3, name: '山田駅前', line: 'やまださくら線' },
+//     { id: 4, name: '宮ノ下', line: 'やまださくら線' },
+//   ];
 // 時間と分の選択肢を生成
 const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
 const minutes = ['00', '10', '20', '30', '40', '50'];
@@ -29,45 +29,25 @@ interface UserBusBookingPageProps {
 }
 
 export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBusBookingPageProps) {
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const currentHour = String(now.getHours()).padStart(2, '0');
+  const roundedMinutes = Math.ceil(now.getMinutes() / 10) * 10;
+  const currentMinute = String(roundedMinutes === 60 ? 50 : roundedMinutes).padStart(2, '0');
   const [tripType, setTripType] = useState<'one-way' | 'round-trip'>('one-way');
   const [selectedLine, setSelectedLine] = useState('町田線');
   const [departureLocation, setDepartureLocation] = useState('');
   const [arrivalLocation, setArrivalLocation] = useState('');
   
   // Outbound trip
-  const [outboundDate, setOutboundDate] = useState('2025-11-20');
-  const [outboundHour, setOutboundHour] = useState('12');
-  const [outboundMinute, setOutboundMinute] = useState('00');
+  const [outboundDate, setOutboundDate] = useState(today);
+  const [outboundHour, setOutboundHour] = useState(currentHour);
+  const [outboundMinute, setOutboundMinute] = useState(currentMinute);
   
   // Return trip
-  const [returnDate, setReturnDate] = useState('2025-11-20');
-  const [returnHour, setReturnHour] = useState('12');
-  const [returnMinute, setReturnMinute] = useState('00');
-  
-  // 日付入力の自動フォーマット関数
-  const handleDateInput = (value: string) => {
-    // 数字のみを抽出
-    const numbers = value.replace(/[^\d]/g, '');
-    
-    // 8桁以上なら自動でフォーマット
-    if (numbers.length >= 8) {
-      const year = numbers.slice(0, 4);
-      const month = numbers.slice(4, 6);
-      const day = numbers.slice(6, 8);
-      return `${year}-${month}-${day}`;
-    } else if (numbers.length >= 6) {
-      const year = numbers.slice(0, 4);
-      const month = numbers.slice(4, 6);
-      const day = numbers.slice(6);
-      return `${year}-${month}-${day}`;
-    } else if (numbers.length >= 4) {
-      const year = numbers.slice(0, 4);
-      const month = numbers.slice(4);
-      return `${year}-${month}`;
-    }
-    
-    return numbers;
-  };
+  const [returnDate, setReturnDate] = useState(today);
+  const [returnHour, setReturnHour] = useState(currentHour);
+  const [returnMinute, setReturnMinute] = useState(currentMinute);
   
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
@@ -115,7 +95,7 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
         }        
       }
     } catch (err) {
-      console.error("停留所の取得に失敗しました", err);
+      console.error("UserBusBookingPage:停留所の取得に失敗しました", err);
     } finally {
       setLoading(false);
     }
@@ -128,7 +108,7 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
     const [loading, setLoading] = useState(true);
     useEffect(() => {
       const fetchBusLines = async () => {
-        console.log("取得開始..."); // 動いているか確認
+        console.log("UserBusBookingPage:取得開始..."); // 動いているか確認
         try{
           setLoading(true);
           //supabaseからデータ取得
@@ -137,7 +117,7 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
           .select('route_name');
 
           if (error) throw error;
-          console.log("バス路線取得データ:", data); // 取得確認用
+          console.log("UserBusBookingPage:バス路線取得データ:", data); // 取得確認用
           if (data) {
             //データ整形
             const lineArray = data.map((item) => item.route_name);
@@ -258,10 +238,10 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
             <div className="flex items-center gap-4 flex-wrap">
               <span className="min-w-[60px]">日付</span>
               <input
-                type="text"
+                type="date"
                 value={outboundDate}
-                onChange={(e) => setOutboundDate(handleDateInput(e.target.value))}
-                placeholder="YYYYMMDD"
+                onChange={(e) => setOutboundDate(e.target.value)}
+                //placeholder="YYYYMMDD"
                 className="flex-1 min-w-[200px] border-2 border-black rounded-lg px-4 py-2 bg-white"
               />
             </div>
@@ -302,10 +282,10 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
                 <div className="flex items-center gap-4 flex-wrap">
                   <span className="min-w-[60px]">日付</span>
                   <input
-                    type="text"
+                    type="date"
                     value={returnDate}
-                    onChange={(e) => setReturnDate(handleDateInput(e.target.value))}
-                    placeholder="YYYYMMDD"
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    //placeholder="YYYYMMDD"
                     className="flex-1 min-w-[200px] border-2 border-black rounded-lg px-4 py-2 bg-white"
                   />
                 </div>
