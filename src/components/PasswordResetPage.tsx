@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase } from './supabaseClient'; // パスは環境に合わせて調整してください
 
 interface PasswordResetPageProps {
   onBack: () => void;
@@ -18,43 +18,38 @@ export function PasswordResetPage({ onBack, onSendEmail }: PasswordResetPageProp
 
     setLoading(true);
     try {
-      // 1. ユーザー存在チェック
-      const { data: user, error: fetchError } = await supabase
-        .from('ユーザ')
-        .select('id')
-        .eq('email', email)
-        .single();
+      // サーバー機能（Edge Function）のURLを作成
+      // これが "/server/reset-password" になります
+      const functionUrl = `${supabase.supabaseUrl}/functions/v1/server/reset-password`;
 
-      if (fetchError) {
-        if (fetchError.code === 'PGRST116') {
-          alert('このメールアドレスは登録されていません');
-        } else {
-          throw new Error('通信に失敗しました。ネットワーク環境を確認してください。');
-        }
-        return;
+      console.log("Calling:", functionUrl); // デバッグ用
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // supabaseClient.ts のキーを使って認証
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+        body: JSON.stringify({ email: email }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || '送信に失敗しました');
       }
 
-      // 2. ワンタイムパスワード生成 (6桁)
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 5 * 60000).toISOString(); // 5分有効
-
-      // 3. データベース更新
-      const { error: updateError } = await supabase
-        .from('ユーザ')
-        .update({ 
-          reset_otp_code: otp, 
-          reset_otp_expires_at: expiresAt 
-        })
-        .eq('email', email);
-
-      if (updateError) throw new Error('認証コードの保存に失敗しました。');
-
-      // 4. 送信処理（テスト用アラート）と遷移
-      alert(`【テスト用】ワンタイムパスワードを送りました: ${otp}`);
+      alert('認証コードをメールで送信しました。');
       onSendEmail(email);
 
     } catch (err: any) {
-      alert(err.message || '予期せぬエラーが発生しました');
+      console.error(err);
+      if (err.message === 'User not found') {
+        alert('このメールアドレスは登録されていません');
+      } else {
+        alert('エラー: ' + err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -82,10 +77,14 @@ export function PasswordResetPage({ onBack, onSendEmail }: PasswordResetPageProp
                 />
               </div>
               <div className="flex items-center justify-center gap-6 pt-6">
-                <button onClick={onBack} className="px-12 py-3 bg-white text-blue-900 border-2 border-blue-900 rounded-lg hover:bg-gray-50 transition-colors">
+                <button onClick={onBack} className="px-12 py-3 bg-white text-blue-900 border-2 border-blue-900 rounded-lg">
                   戻る
                 </button>
-                <button onClick={handleSendEmail} disabled={loading} className="px-12 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-colors disabled:bg-slate-400">
+                <button 
+                  onClick={handleSendEmail} 
+                  disabled={loading} 
+                  className="px-12 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800 disabled:bg-slate-400"
+                >
                   {loading ? '送信中...' : '送信'}
                 </button>
               </div>
