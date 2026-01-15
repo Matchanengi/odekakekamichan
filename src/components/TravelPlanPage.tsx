@@ -1,65 +1,96 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+'use client';
+
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { supabase } from './supabaseClient';
 
 interface TravelPlanPageProps {
   onShowItinerary?: () => void;
 }
 
+type Spot = {
+  spot_id: number;
+  name: string;
+  description: string | null;
+  business_hours: string | null;
+  regular_holiday: string | null;
+  parking: string | null;
+  fee: string | null;
+  contact_info: string | null;
+  img_pass: string | null;
+  address: string | null;
+  distance: number | null;
+};
+
 export function TravelPlanPage({ onShowItinerary }: TravelPlanPageProps) {
   const [destination, setDestination] = useState('');
+  const [spots, setSpots] = useState<Spot[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSearch = () => {
-    if (destination.trim()) {
+  // 🔍 Supabase 検索
+  const handleSearch = async () => {
+    if (!destination.trim()) {
+      setErrorMessage('目的地を入力してください');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMessage('');
+    setShowResults(false);
+
+    try {
+      const { data, error } = await supabase
+        .from('観光地')
+        .select(`
+          spot_id,
+          name,
+          description,
+          business_hours,
+          regular_holiday,
+          parking,
+          fee,
+          contact_info,
+          img_pass,
+          address,
+          distance
+        `)
+        .ilike('name', `%${destination}%`);
+
+      if (error) throw error;
+
+      setSpots(data ?? []);
       setShowResults(true);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMessage(err?.message ?? '検索中にエラーが発生しました');
+      setSpots([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleReset = () => {
     setDestination('');
+    setSpots([]);
     setShowResults(false);
+    setErrorMessage('');
   };
-
-  const destinations = [
-    {
-      id: 1,
-      name: '轟の滝',
-      description: '落差82メートル、青く輝く3段の滝壺には玉織姫にまつわる平家伝説があり、桜、新緑、紅葉と四季を通した景勝地として賑わいます。歌人・吉井勇も訪れた滝で、県指定文化財（名勝・天然記念物）に指定されています。「日本の滝100選」にも選ばれた香美市のシンボルとも言うべき滝です。',
-      images: [
-        'https://images.unsplash.com/photo-1742744410671-9b59a50efd31?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3YXRlcmZhbGwlMjBmb3Jlc3QlMjBqYXBhbnxlbnwxfHx8fDE3NjcxMTAxOTF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-        'https://images.unsplash.com/photo-1706810693459-25f649381663?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3VudGFpbiUyMHN0cmVhbSUyMHdhdGVyfGVufDF8fHx8MTc2NzAxODg4Mnww&ixlib=rb-4.1.0&q=80&w=1080'
-      ]
-    },
-    {
-      id: 2,
-      name: '西熊渓谷',
-      description: '土佐生川上流にあり、素晴らしい渓谷美を誇る西熊渓谷は、登山者で賑わう三嶺や白髪山への入り口でもあります。秋の紅葉が特に美しく、紅葉の秋、雪化粧まもなく3たどういった四季それぞれの美しい姿を見せてくれます。',
-      images: [
-        'https://images.unsplash.com/photo-1698666501734-b084e72616d4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2YWxsZXklMjBhdXR1bW4lMjBsZWF2ZXN8ZW58MXx8fHwxNzY3MTEwMTkzfDA&ixlib=rb-4.1.0&q=80&w=1080'
-      ]
-    },
-    {
-      id: 3,
-      name: '大荒の滝',
-      description: '落差40mの滝。豊かな滝から移り続けんだ三色の青が織り成す香美市最も美しい、周囲の山岩一面が苔むした美しさとから この名がついたといわれている。深緑から紅葉へと移りゆく自然の自然美を堪能できる。',
-      images: [
-        'https://images.unsplash.com/photo-1633541672712-f22f14fe683a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxibHVlJTIwd2F0ZXJmYWxsJTIwY2F2ZXxlbnwxfHx8fDE3NjcxMTAxOTN8MA&ixlib=rb-4.1.0&q=80&w=1080'
-      ]
-    }
-  ];
 
   return (
     <div className="bg-cyan-400 rounded-3xl p-3 sm:p-8 mx-2 sm:mx-4 my-4 sm:my-6">
       <div className="bg-white rounded-3xl p-4 sm:p-8">
         <h2 className="text-xl sm:text-2xl mb-2">旅行プラン検索</h2>
-        
-        <p className="text-sm sm:text-base mb-6">あなたにぴったりな旅行プランを作成します</p>
+        <p className="text-sm sm:text-base mb-6">
+          あなたにぴったりな旅行プランを作成します
+        </p>
 
-        {/* Search Section */}
+        {/* 🔍 検索入力 */}
         <div className="mb-6">
           <div className="mb-4">
-            <div className="bg-cyan-400 text-white px-4 py-2 rounded-t-lg inline-block text-sm sm:text-base">
+            <div className="bg-cyan-400 text-white px-4 py-2 rounded-t-lg inline-block">
               目的地
             </div>
             <input
@@ -67,68 +98,85 @@ export function TravelPlanPage({ onShowItinerary }: TravelPlanPageProps) {
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
               placeholder="吉井勇記念館"
-              className="w-full border-2 border-black rounded-lg px-4 py-3 text-base"
+              className="w-full border-2 border-black rounded-lg px-4 py-3"
             />
           </div>
-          
+
           {!showResults ? (
-            <button 
+            <button
               onClick={handleSearch}
-              className="bg-green-500 text-white px-8 py-3 rounded-lg hover:bg-green-600 transition-colors w-full sm:w-auto text-base"
+              className="bg-green-500 text-white px-8 py-3 rounded-lg w-full sm:w-auto"
             >
               検索する
             </button>
           ) : (
-            <button 
+            <button
               onClick={handleReset}
-              className="bg-green-500 text-white px-8 py-3 rounded-lg hover:bg-green-600 transition-colors w-full sm:w-auto text-base"
+              className="bg-green-500 text-white px-8 py-3 rounded-lg w-full sm:w-auto"
             >
               再検索
             </button>
           )}
         </div>
 
-        {/* Results Section */}
-        {showResults && (
+        {/* ⏳ ローディング */}
+        {loading && <p className="text-center">検索中...</p>}
+
+        {/* ❌ エラー */}
+        {errorMessage && (
+          <p className="text-center text-red-600 mb-4">
+            {errorMessage}
+          </p>
+        )}
+
+        {/* 📄 検索結果 */}
+        {showResults && !loading && (
           <>
-            {/* Arrow */}
             <div className="flex justify-center mb-6">
-              <ChevronDown className="text-cyan-400" size={48} strokeWidth={2} />
+              <ChevronDown className="text-cyan-400" size={48} />
             </div>
 
-            {/* Destination Cards */}
-            {destinations.map((dest, index) => (
-              <div key={dest.id} className="mb-6">
-                {/* Header */}
+            {spots.length === 0 && (
+              <p className="text-center">該当する観光地はありません</p>
+            )}
+
+            {spots.map((spot, index) => (
+              <div key={spot.spot_id} className="mb-6">
+                {/* ヘッダー */}
                 <div className="flex items-center mb-3">
-                  <div className="bg-cyan-400 text-white px-4 py-2 rounded text-sm sm:text-base">
+                  <div className="bg-cyan-400 text-white px-4 py-2 rounded">
                     候補地{index + 1}
                   </div>
-                  <div className="ml-3 text-base sm:text-lg">
-                    {dest.name}
-                  </div>
+                  <div className="ml-3 text-lg">{spot.name}</div>
                 </div>
-                
-                {/* Content */}
+
+                {/* 本文 */}
                 <div className="bg-white">
-                  <p className="text-sm leading-relaxed mb-4">{dest.description}</p>
-                  
-                  {/* Images */}
-                  <div className={`grid gap-3 mb-4 ${dest.images.length === 2 ? 'grid-cols-1' : 'grid-cols-1'}`}>
-                    {dest.images.map((img, imgIndex) => (
-                      <div key={imgIndex} className="aspect-video overflow-hidden rounded-lg">
-                        <ImageWithFallback
-                          src={img}
-                          alt={`${dest.name} ${imgIndex + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Add Button */}
+                  <p className="text-sm mb-4">
+                    {spot.description ?? '説明はありません'}
+                  </p>
+
+                  {spot.img_pass && (
+                    <div className="aspect-video overflow-hidden rounded-lg mb-4">
+                      <ImageWithFallback
+                        src={spot.img_pass}
+                        alt={spot.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+
+                  <ul className="text-sm space-y-1 mb-4">
+                    <li>住所：{spot.address ?? '不明'}</li>
+                    <li>営業時間：{spot.business_hours ?? '不明'}</li>
+                    <li>定休日：{spot.regular_holiday ?? '不明'}</li>
+                    <li>駐車場：{spot.parking ?? '不明'}</li>
+                    <li>料金：{spot.fee ?? '不明'}</li>
+                    <li>連絡先：{spot.contact_info ?? '不明'}</li>
+                  </ul>
+
                   <div className="flex justify-end">
-                    <button className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm sm:text-base">
+                    <button className="bg-green-500 text-white px-6 py-2 rounded-lg">
                       この場所を追加する
                     </button>
                   </div>
@@ -136,12 +184,15 @@ export function TravelPlanPage({ onShowItinerary }: TravelPlanPageProps) {
               </div>
             ))}
 
-            {/* Bottom Action Buttons */}
+            {/* 下部ボタン */}
             <div className="flex flex-col gap-3 mt-6">
-              <button className="bg-green-500 text-white px-8 py-4 rounded-lg hover:bg-green-600 transition-colors w-full text-base">
+              <button className="bg-green-500 text-white px-8 py-4 rounded-lg">
                 MAPで経路を確認する
               </button>
-              <button className="bg-green-500 text-white px-8 py-4 rounded-lg hover:bg-green-600 transition-colors w-full text-base" onClick={onShowItinerary}>
+              <button
+                className="bg-green-500 text-white px-8 py-4 rounded-lg"
+                onClick={onShowItinerary}
+              >
                 旅程表を確認する
               </button>
             </div>
