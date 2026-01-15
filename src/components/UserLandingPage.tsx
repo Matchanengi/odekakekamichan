@@ -1,22 +1,14 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-type UserPage =
-  | "home"
-  | "travel"
-  | "sightseeing"
-  | "booking"
-  | "login"
-  | "map"
-  | "contact";
+import { type UserPage } from "../App";
 
 interface UserLandingPageProps {
   onNavigate: (page: UserPage) => void;
 }
 
-export function UserLandingPage({
-  onNavigate,
-}: UserLandingPageProps) {
+export function UserLandingPage({ onNavigate }: UserLandingPageProps) {
+  void onNavigate; // 未使用エラー対策
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const slides = [

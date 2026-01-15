@@ -19,8 +19,8 @@ export function ReservationEditModal({
   onClose,
   reservation,
 }: ReservationEditModalProps) {
-  const [currentRoute, setCurrentRoute] = useState("蕨野線（山田駅 発）");
-  const [selectedDate, setSelectedDate] = useState("2025 年 11 月 18 日(火) 09:30");
+  const [currentRoute] = useState("蕨野線（山田駅 発）");
+  const [selectedDate] = useState("2025 年 11 月 18 日(火) 09:30");
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [boardingLocation, setBoardingLocation] = useState("山田駅");

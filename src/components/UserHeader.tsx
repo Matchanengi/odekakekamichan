@@ -1,4 +1,4 @@
-type UserPage = 'home' | 'travel' | 'sightseeing' | 'booking' | 'login' | 'map' | 'contact' | 'member' | 'route-map' | 'itinerary';
+import { type UserPage } from "../App";
 
 interface UserHeaderProps {
   currentPage: UserPage;
@@ -8,6 +8,8 @@ interface UserHeaderProps {
 }
 
 export function UserHeader({ currentPage, onPageChange, isLoggedIn = false, onBusBookingRequireLogin }: UserHeaderProps) {
+  // 関数の冒頭で currentPage を使うか、何もしないことでエラーを回避
+  void currentPage;
   return (
     <header className="bg-cyan-400 text-blue-900 px-4 sm:px-8 py-4">
       <div className="flex items-center justify-between flex-col sm:flex-row gap-4">

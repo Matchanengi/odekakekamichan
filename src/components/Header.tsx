@@ -1,4 +1,4 @@
-type MainPage = 'top' | 'reservations' | 'notifications' | 'member' | 'contact';
+import { type MainPage } from "../App";
 
 interface HeaderProps {
   currentMainPage: MainPage;

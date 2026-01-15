@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from './supabaseClient'; // パスは環境に合わせて調整してください
+//import { supabase } from './supabaseClient'; // パスは適宜調整してください
 
 interface PasswordResetPageProps {
   onBack: () => void;
@@ -20,7 +20,8 @@ export function PasswordResetPage({ onBack, onSendEmail }: PasswordResetPageProp
     try {
       // サーバー機能（Edge Function）のURLを作成
       // これが "/server/reset-password" になります
-      const functionUrl = `${supabase.supabaseUrl}/functions/v1/server/reset-password`;
+      const supabaseUrl = 'https://sfzjvpordilroakqmjnp.supabase.co';
+      const functionUrl = `${supabaseUrl}/functions/v1/server/reset-password`;
 
       console.log("Calling:", functionUrl); // デバッグ用
 
@@ -29,7 +30,7 @@ export function PasswordResetPage({ onBack, onSendEmail }: PasswordResetPageProp
         headers: {
           'Content-Type': 'application/json',
           // supabaseClient.ts のキーを使って認証
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmemp2cG9yZGlscm9ha3Ftam5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY2NDY4NDIsImV4cCI6MjA4MjIyMjg0Mn0.f_0QO9dqlY99yr_2YdKw_B8lqxu6fkKMV3z140h2Y8I`,
         },
         body: JSON.stringify({ email: email }),
       });

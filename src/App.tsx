@@ -25,9 +25,9 @@ import { BookingCompletePage } from './components/BookingCompletePage';
 import { BusResultsPage } from './components/BusResultsPage';
 import './App.css';
 
-type MainPage = 'top' | 'reservations' | 'new-reservation' | 'notifications' | 'member' | 'contact';
-type UserPage = 'home' | 'travel' | 'sightseeing' | 'booking' | 'login' | 'map' | 'contact' | 'member' | 'route-map' | 'itinerary' | 'register' | 'register-confirm' | 'password-reset' | 'one-time-password' | 'new-password' | 'bus-results' | 'booking-confirm' | 'booking-complete';
-type UserType = 'guest' | 'user' | 'admin';
+export type MainPage = 'top' | 'reservations' | 'new-reservation' | 'notifications' | 'member' | 'contact';
+export type UserPage = 'home' | 'travel' | 'sightseeing' | 'booking' | 'login' | 'map' | 'contact' | 'member' | 'route-map' | 'itinerary' | 'register' | 'register-confirm' | 'password-reset' | 'one-time-password' | 'new-password' | 'bus-results' | 'booking-confirm' | 'booking-complete';
+export type UserType = 'guest' | 'user' | 'admin';
 
 export default function App() {
   const [userType, setUserType] = useState<UserType>('guest');
@@ -69,6 +69,8 @@ export default function App() {
     returnArrivalTime?: string;
     adults: number;
     children: number;
+    tripId?: number;        // 追加
+    returnTripId?: number;  // 追加
   } | null>(null);
 
   const handleLoginAsUser = () => {
@@ -171,7 +173,12 @@ export default function App() {
         )}
         {currentUserPage === 'booking-confirm' && bookingData && (
           <BookingConfirmPage 
-            bookingData={bookingData}
+            bookingData={{
+              ...bookingData,
+              // ?? 0 を付け加えることで、空っぽ(undefined)の時は 0 を渡すようにします
+              tripId: bookingData.tripId ?? 0,
+              returnTripId: bookingData.returnTripId ?? 0
+            }}
             onBack={() => setCurrentUserPage('bus-results')}
             onConfirm={() => setCurrentUserPage('booking-complete')}
           />

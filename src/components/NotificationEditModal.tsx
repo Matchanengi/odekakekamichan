@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { X, ChevronDown, Calendar as CalendarIcon } from "lucide-react";
 import DatePicker, { registerLocale } from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import ja from "date-fns/locale/ja";
+import { ja } from "date-fns/locale";
 import { supabase } from "./supabaseClient";
 
 // カレンダーの日本語化設定

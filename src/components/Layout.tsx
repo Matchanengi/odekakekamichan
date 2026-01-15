@@ -1,7 +1,7 @@
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react'; // type を追加
 import { Header } from './Header';
 
-type MainPage = 'top' | 'reservations' | 'notifications' | 'member' | 'contact';
+import { type MainPage } from "../App";
 
 interface LayoutProps {
   children: ReactNode;

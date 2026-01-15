@@ -51,7 +51,7 @@ export function LoginPage({
     setLoading(true);
     setError(null);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data: _data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
