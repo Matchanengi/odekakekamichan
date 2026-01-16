@@ -73,6 +73,7 @@ export default function App() {
     returnTripId?: number;  // 追加
   } | null>(null);
 
+
   const handleLoginAsUser = () => {
     setUserType('user');
     setCurrentUserPage('home');
@@ -124,6 +125,7 @@ export default function App() {
         {currentUserPage === 'member' && <MemberInfoPage onLogout={handleLogout} isAdmin={false} />}
         {currentUserPage === 'booking' && (
           <UserBusBookingPage 
+            initialData={busSearchData} // 追加
             onShowRouteMap={() => setCurrentUserPage('route-map')}
             onShowBusResults={(data) => {
               setBusSearchData(data);

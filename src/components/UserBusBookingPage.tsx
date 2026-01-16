@@ -1,65 +1,108 @@
 import { useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import { supabase } from './supabaseClient';
-//import { FormItem } from "./ui/form";
-// const busStops = [
-//     { id: 1, name: '山田駅前', line: '町田線' },
-//     { id: 2, name: '下ノ村', line: '町田線' },
-//     { id: 3, name: '山田駅前', line: 'やまださくら線' },
-//     { id: 4, name: '宮ノ下', line: 'やまださくら線' },
-//   ];
-// 時間と分の選択肢を生成
+
 const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
 const minutes = ['00', '10', '20', '30', '40', '50'];
 
 interface UserBusBookingPageProps {
   onShowRouteMap?: () => void;
-  onShowBusResults?: (searchData: {
-    line: string;
-    departure: string;
-    arrival: string;
-    tripType: '片道' | '往復';
-    outboundDate: string;
-    outboundTime: string;
-    returnDate?: string;
-    returnTime?: string;
-    adults: number;
-    children: number;
-  }) => void;
+  onShowBusResults?: (searchData: //{
+     any
+  //   line: string;
+  //   departure: string;
+  //   arrival: string;
+  //   tripType: '片道' | '往復';
+  //   outboundDate: string;
+  //   outboundTime: string;
+  //   returnDate?: string;
+  //   returnTime?: string;
+  //   adults: number;
+  //   children: number;
+  // }
+  ) => void;
+  initialData?: any; // 戻り時のデータを受け取る
 }
 
-export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBusBookingPageProps) {
+export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialData }: UserBusBookingPageProps) {
   const now = new Date();
   const today = now.toISOString().split('T')[0];
   const currentHour = String(now.getHours()).padStart(2, '0');
   const roundedMinutes = Math.ceil(now.getMinutes() / 10) * 10;
   const currentMinute = String(roundedMinutes === 60 ? 50 : roundedMinutes).padStart(2, '0');
-  const [tripType, setTripType] = useState<'one-way' | 'round-trip'>('one-way');
-  const [selectedLine, setSelectedLine] = useState('町田線');
-  const [departureLocation, setDepartureLocation] = useState('');
-  const [arrivalLocation, setArrivalLocation] = useState('');
-  
-  // Outbound trip
-  const [outboundDate, setOutboundDate] = useState(today);
-  const [outboundHour, setOutboundHour] = useState(currentHour);
-  const [outboundMinute, setOutboundMinute] = useState(currentMinute);
-  
-  // Return trip
-  const [returnDate, setReturnDate] = useState(today);
-  const [returnHour, setReturnHour] = useState(currentHour);
-  const [returnMinute, setReturnMinute] = useState(currentMinute);
-  
-  const [adults, setAdults] = useState(1);
-  const [children, setChildren] = useState(0);
 
+  const [tripType, setTripType] = useState<'one-way' | 'round-trip'>(
+    initialData?.tripType === '往復' ? 'round-trip' : 'one-way'
+  );
+  const [selectedLine, setSelectedLine] = useState(initialData?.line || '町田線');
+  const [departureLocation, setDepartureLocation] = useState(initialData?.departure || '');
+  const [arrivalLocation, setArrivalLocation] = useState(initialData?.arrival || '');
+  
+ // 出発情報（時刻は "HH:MM" 形式で来ると想定して split する）
+  const initOutboundTime = initialData?.outboundTime?.split(':') || [currentHour, currentMinute];
+  const [outboundDate, setOutboundDate] = useState(initialData?.outboundDate || today);
+  const [outboundHour, setOutboundHour] = useState(initOutboundTime[0]);
+  const [outboundMinute, setOutboundMinute] = useState(initOutboundTime[1]);
+  
+  // 帰り情報
+  const initReturnTime = initialData?.returnTime?.split(':') || [currentHour, currentMinute];
+  const [returnDate, setReturnDate] = useState(initialData?.returnDate || today);
+  const [returnHour, setReturnHour] = useState(initReturnTime[0]);
+  const [returnMinute, setReturnMinute] = useState(initReturnTime[1]);
+  
+  const [adults, setAdults] = useState(initialData?.adults || 1);
+  const [children, setChildren] = useState(initialData?.children || 0);
+
+  const [busLines, setBusLines] = useState<string[]>([]);
   const [availableStops, setAvailableStops] = useState<{id: any, name: string}[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // 日時比較用のロジック
+  const outboundFullDate = new Date(`${outboundDate}T${outboundHour}:${outboundMinute}`);
+  const returnFullDate = new Date(`${returnDate}T${returnHour}:${returnMinute}`);
+  
+  // 往復かつ、帰りが行きより前（または同時）であればエラー
+  const isTimeError = tripType === 'round-trip' && returnFullDate < outboundFullDate;
+
+  // 戻ってきたときに、選択されていた路線の「停留所リスト」を自動で読み込む
+  useEffect(() => {
+    const initializeData = async () => {
+      setLoading(true);
+      try {
+        // (A) まず、すべての「バス路線」を取得してプルダウンを埋める
+        const { data: routeList, error: routeError } = await supabase
+          .from('バス路線')
+          .select('route_name');
+
+        if (routeError) throw routeError;
+        if (routeList) {
+          setBusLines(routeList.map(item => item.route_name));
+        }
+
+        // (B) initialDataがある場合、またはデフォルトの路線がある場合、その停留所を取得
+        const lineToFetch = initialData?.line || selectedLine;
+        if (lineToFetch) {
+          // 第二引数をtrueにして、戻り時のリセットを防止
+          await handleLineChange(lineToFetch, !!initialData);
+        }
+      } catch (error) {
+        console.error('初期データの取得に失敗:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeData();
+  }, []);
+
   // 路線が変更されたときの処理
-  const handleLineChange = async (lineName: string) => {
+  const handleLineChange = async (lineName: string, keepsSelection = false) => {
     setSelectedLine(lineName);
-    setDepartureLocation('');
-    setArrivalLocation('');
+    // 初めての入力時（isInitialLoadがfalse）のみ、選択をリセット
+    if (!keepsSelection) {
+      setDepartureLocation('');
+      setArrivalLocation('');
+    }
 
     if (!lineName) {
       setAvailableStops([]);
@@ -80,7 +123,7 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
         const { data, error } = await supabase
           .from('停留所')
           .select('stop_id, stop_name')
-          .or(`route_id_1.eq.${routeData.route_id},route_id_2.eq.${routeData.route_id},route_id_3.eq.${routeData.route_id},route_id_4.eq.${routeData.route_id}`);
+          .or(`route_id_1.eq.${routeData.route_id},route_id_2.eq.${routeData.route_id},route_id_3.eq.${routeData.route_id},route_id_4.eq.${routeData.route_id},route_id_5.eq.${routeData.route_id},route_id_6.eq.${routeData.route_id}`);
 
         if (error) throw error;
         if (data) {
@@ -90,6 +133,11 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
             name: item.stop_name // stop_name を name に入れる
           }));  
             setAvailableStops(formattedStops);
+            // 戻り時の場合、Propsの値を再度セット（Stateの更新タイミングを合わせるため）
+            if (keepsSelection && initialData) {
+              setDepartureLocation(initialData.departure);
+              setArrivalLocation(initialData.arrival);
+            }
         } else {
             setAvailableStops([]);
         }        
@@ -100,49 +148,6 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
       setLoading(false);
     }
   };
-  const [busLines, setBusLines] = useState<string[]>([]);
-  // const busLines = ['町田線', 'やまださくら線'];
-  //const [busStops, setBusStops] = useState([]);  
-  
-  function BusLineList() {
-    const [loading, setLoading] = useState(true);
-    useEffect(() => {
-      const fetchBusLines = async () => {
-        console.log("UserBusBookingPage:取得開始..."); // 動いているか確認
-        try{
-          setLoading(true);
-          //supabaseからデータ取得
-          const{ data, error } = await supabase
-          .from('バス路線')          
-          .select('route_name');
-
-          if (error) throw error;
-          console.log("UserBusBookingPage:バス路線取得データ:", data); // 取得確認用
-          if (data) {
-            //データ整形
-            const lineArray = data.map((item) => item.route_name);
-            setBusLines(lineArray);    
-          }      
-        } catch (error) {
-          console.error('Error fetching bus Lines:', error);        
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchBusLines();
-    }, []);
-    if (loading) return <div>読み込み中...</div>;
-
-    return (
-      <ul>
-        {busLines.map((line, index) => (
-          <li key={index}>{line}</li>
-        ))}
-      </ul>
-    );
-  }
-  BusLineList();
 
   return (
     <div className="bg-cyan-400 rounded-3xl p-4 sm:p-8 mx-4 my-6">
@@ -233,6 +238,15 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults }: UserBus
             </button>
           </div>
 
+          {/* ★追加：エラーメッセージの表示 */}
+          {isTimeError && (
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-500 rounded-xl">
+              <p className="text-red-600 font-bold text-center">
+                【ご注意】帰りの時刻が行きの出発時刻より前の時間に設定されています。
+              </p>
+            </div>
+          )}
+          
           {/* Outbound Date and Time Selection */}
           <div className="space-y-4">
             <div className="flex items-center gap-4 flex-wrap">
