@@ -44,7 +44,7 @@ export default function App() {
   const [busSearchData, setBusSearchData] = useState<any>(null);
   const [bookingData, setBookingData] = useState<any>(null);
 
-  // セキュリティ監視
+  // セキュリティ監視（これがないと5分放置しても画面が切り替わりません）
   useEffect(() => {
     const protectedPages: UserPage[] = ['member', 'booking', 'bus-results', 'booking-confirm', 'booking-complete'];
     if (!user && protectedPages.includes(currentUserPage)) {
@@ -52,6 +52,13 @@ export default function App() {
     }
   }, [user, currentUserPage]);
 
+  // 最新のログイン成功時の処理
+  const handleLoginAsUser = () => {
+    setCurrentUserPage('home');
+    setLoginMessage('');
+  };
+
+  // 最新のログアウト処理
   const handleLogout = async () => {
     await signOut();
     setCurrentUserPage('home');
@@ -130,6 +137,22 @@ export default function App() {
 
         {currentUserPage === 'map' && <MapPage />}
         {currentUserPage === 'contact' && <ContactPage onBack={() => setCurrentUserPage('home')} isAdmin={false} />}
+        {/* 会員ページ（user && を追加） */}
+        {currentUserPage === 'member' && user && (
+          <MemberInfoPage onLogout={handleLogout} isAdmin={false} />
+        )}
+
+        {/* バス予約（user && を追加し、GitHubの initialData も残す） */}
+        {currentUserPage === 'booking' && user && (
+          <UserBusBookingPage 
+            initialData={busSearchData} 
+            onShowRouteMap={() => setCurrentUserPage('route-map')}
+            onShowBusResults={(data) => {
+              setBusSearchData(data);
+              setCurrentUserPage('bus-results');
+            }}
+          />
+        )}
         {currentUserPage === 'route-map' && <RouteMapPage onBack={() => setCurrentUserPage('booking')} />}
         {currentUserPage === 'travel' && <TravelPlanPage onShowItinerary={() => setCurrentUserPage('itinerary')} />}
         {currentUserPage === 'itinerary' && <ItineraryPage />}

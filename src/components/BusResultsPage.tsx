@@ -210,7 +210,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
         returnArrivalTime: selectedReturnBus.arrivalTime,
         tripId: selectedOutboundBus.id,
         returnTripId: selectedReturnBus.id,
-        fare: selectedReturnBus.fare
+        fare: selectedOutboundBus.fare + selectedReturnBus.fare
       });
     }
   };
@@ -266,7 +266,10 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
 
             {/* アクションボタン */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-12">
-              <button onClick={() => onBack(searchData)} className="w-full sm:w-auto bg-gray-400 text-white px-12 py-3 rounded-xl">
+              <button 
+                onClick={() => onBack(searchData)}
+                className="w-full sm:w-auto bg-gray-400 text-white px-12 py-3 rounded-xl"
+              >
                 戻る
               </button>
               <button
