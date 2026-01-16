@@ -4,8 +4,6 @@ import { supabase } from "./supabaseClient";
 
 interface LoginPageProps {
   onLoginAsUser: () => void;
-  // onLoginAsAdmin は自動判別になったため不要ですが、App.tsx 側との互換性のために残すか、App.tsx側も消すか選べます。
-  // 一旦、このファイル内からは削除します。
   onShowRegister?: () => void;
   onShowPasswordReset?: () => void;
   message?: string;
@@ -147,15 +145,16 @@ export function LoginPage({
                 disabled={loading}
                 className="w-full py-4 bg-blue-900 text-white font-bold text-lg rounded-xl hover:bg-blue-800 shadow-lg active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                {loading ? '認証中...' : 'ログイン'}
+                ログイン
               </button>
 
-              <div className="mt-10 p-6 bg-blue-50 rounded-3xl border border-blue-100">
-                <h3 className="text-blue-900 font-bold text-sm mb-3 flex items-center gap-2">
-                  <span className="text-lg">💡</span> はじめてご利用の方へ
+              <div className="mt-10 p-6 bg-blue-50 rounded-3xl border border-blue-100 space-y-4">
+                <h3 className="text-blue-900 font-bold text-sm flex items-center gap-2">
+                  <span className="text-lg">💡</span> ログイン・セキュリティのご案内
                 </h3>
                 <ul className="text-[11px] text-blue-800 space-y-2 leading-relaxed">
                   <li><strong>● Google登録：</strong> 本サイト専用のパスワード設定は不要です。上のボタンからすぐに開始できます。</li>
+                  <li><strong>● Googleログインの方へ：</strong> 「パスワードをお忘れの方」からパスワードを設定すると、次回からメールアドレスでのログインも併用できるようになります。</li>
                   <li><strong>● 管理者の方：</strong> 登録済みのメールアドレスでログインすると、自動的に管理者メニューが表示されます。</li>
                   <li><strong>● セキュリティ：</strong> 操作がない状態が5分続くと、安全のため自動的にログアウトされます。</li>
                 </ul>
