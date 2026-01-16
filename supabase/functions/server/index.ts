@@ -1,4 +1,3 @@
-// ▼ メール内容をリッチにした完成版コード ▼
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { createTransport } from "npm:nodemailer";
@@ -9,102 +8,77 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { email } = await req.json();
-
-    // 環境変数の取得
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const gmailUser = Deno.env.get('GMAIL_USER');
-    const gmailPass = Deno.env.get('GMAIL_PASS');
-
-    if (!supabaseUrl || !supabaseServiceKey || !gmailUser || !gmailPass) {
-      throw new Error('環境変数が足りません');
-    }
-
+    const { action, email, otp, newPassword } = await req.json();
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // ユーザー検索
-    const { data: user } = await supabase
-      .from('ユーザ')
-      .select('id')
-      .eq('email', email)
-      .single();
+    // --- アクション1: OTP送信 ---
+    if (action === 'send-otp') {
+      const { data: user } = await supabase.from('ユーザ').select('id').eq('email', email).single();
+      if (!user) return new Response(JSON.stringify({ error: 'User not found' }), { status: 404, headers: corsHeaders });
 
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 404,
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60000).toISOString(); // 10分間有効
+
+      await supabase.from('ユーザ').update({ reset_otp_code: generatedOtp, reset_otp_expires_at: expiresAt }).eq('email', email);
+
+      const transporter = createTransport({ service: 'gmail', auth: { user: Deno.env.get('GMAIL_USER'), pass: Deno.env.get('GMAIL_PASS') } });
+      await transporter.sendMail({
+        from: `"おでかけかみちゃん" <${Deno.env.get('GMAIL_USER')}>`,
+        to: email,
+        subject: 'パスワードリセット認証コード',
+        html: `<div style="text-align:center;"><h2>認証コード</h2><h1 style="font-size:40px;">${generatedOtp}</h1><p>有効期限: 10分</p></div>`
       });
+
+      return new Response(JSON.stringify({ message: 'Sent' }), { status: 200, headers: corsHeaders });
     }
 
-    // OTP生成
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60000).toISOString();
+    // --- アクション2: 本物のパスワード更新 (Authentication連携) ---
+    if (action === 'reset-password') {
+      // 1. 自作テーブルのOTPと「有効期限」を最終確認
+      const { data: user } = await supabase.from('ユーザ')
+        .select('id, reset_otp_code, reset_otp_expires_at')
+        .eq('email', email).single();
 
-    // DB更新
-    const { error: updateError } = await supabase
-      .from('ユーザ')
-      .update({ reset_otp_code: otp, reset_otp_expires_at: expiresAt })
-      .eq('email', email);
+      if (!user || user.reset_otp_code !== otp) {
+        return new Response(JSON.stringify({ error: '認証コードが正しくありません' }), { status: 400, headers: corsHeaders });
+      }
 
-    if (updateError) throw new Error('DB Update Failed');
+      // ★追加：サーバー側でも有効期限を厳格にチェック
+      const isExpired = new Date() > new Date(user.reset_otp_expires_at);
+      if (isExpired) {
+        return new Response(JSON.stringify({ error: '認証コードの有効期限が切れています' }), { status: 400, headers: headers });
+      }
 
-    // Gmail設定
-    const transporter = createTransport({
-      service: 'gmail',
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
-      },
-    });
+      // 2. Authentication(ログイン用)のパスワードを管理者権限で上書き
+      const { data: authUserList, error: listError } = await supabase.auth.admin.listUsers();
+      if (listError) throw listError;
+      
+      const targetUser = authUserList.users.find(u => u.email === email);
+      if (!targetUser) return new Response(JSON.stringify({ error: '認証システムにユーザーが見つかりません' }), { status: 404, headers: corsHeaders });
 
-    // ★★★ ここでメールのデザインを作っています ★★★
-    await transporter.sendMail({
-      from: `"おでかけかみちゃん" <${gmailUser}>`, // 送信者名
-      to: email,
-      subject: 'おでかけかみちゃん　パスワードリセット', // 件名
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #ffffff;">
-          <h2 style="color: #1e3a8a; text-align: center; border-bottom: 2px solid #22d3ee; padding-bottom: 10px;">パスワードリセット</h2>
-          
-          <p style="font-size: 16px; color: #333;">
-            おでかけかみちゃんをご利用いただきありがとうございます。<br>
-            以下の認証コードを入力して、パスワードの再設定を行ってください。
-          </p>
-          
-          <div style="background-color: #f0f9ff; padding: 20px; text-align: center; border-radius: 8px; margin: 25px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0284c7;">${otp}</span>
-          </div>
-          
-          <div style="text-align: center; margin-bottom: 20px;">
-            <p style="font-weight: bold; color: #dc2626; font-size: 18px; margin: 0;">有効期限: 10分</p>
-          </div>
+      const { error: updateAuthError } = await supabase.auth.admin.updateUserById(
+        targetUser.id,
+        { password: newPassword }
+      );
 
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-          
-          <p style="font-size: 12px; color: #888; text-align: center;">
-            ※このメールに心当たりがない場合は、無視して削除してください。<br>
-            ※このメールは自動送信されています。
-          </p>
-        </div>
-      `,
-    });
+      if (updateAuthError) throw updateAuthError;
 
-    return new Response(JSON.stringify({ message: 'Success' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
+      // 3. 自作テーブル側の情報を更新（OTPをクリアして不正利用防止）
+      await supabase.from('ユーザ').update({
+        password_hash: 'managed_by_supabase_auth',
+        reset_otp_code: null,
+        reset_otp_expires_at: null
+      }).eq('email', email);
+
+      return new Response(JSON.stringify({ message: 'Password updated' }), { status: 200, headers: corsHeaders });
+    }
 
   } catch (error: any) {
-    console.error(error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    });
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
 });
