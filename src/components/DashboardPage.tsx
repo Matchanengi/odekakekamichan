@@ -4,7 +4,6 @@ import { supabase } from "./supabaseClient";
 export function DashboardPage() {
 
   const [totalReservations, setTotalReservations] = useState<number>(0);
-  const [pendingCount, setPendingCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
 useEffect(() => {
