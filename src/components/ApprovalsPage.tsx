@@ -33,7 +33,7 @@ export function ApprovalsPage() {
         <span className="text-black">
           【最優先】承認待ちの予約{" "}
         </span>
-        <span className="text-red-600">(4件)</span>
+        <span className="text-red-600">({approvals.length}件)</span>
       </h2>
 
       <div className="border-4 border-black rounded-2xl overflow-hidden">
