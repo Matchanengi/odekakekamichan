@@ -32,7 +32,6 @@ export type MainPage = 'top' | 'reservations' | 'new-reservation' | 'notificatio
 export default function App() {
   const { user, role, signOut, loading: authLoading } = useAuth();
   
-  // ★ 自動判定：roleがadminなら管理者として扱う
   const isAdmin = role === 'admin';
 
   const [currentMainPage, setCurrentMainPage] = useState<MainPage>('top');
@@ -44,7 +43,7 @@ export default function App() {
   const [busSearchData, setBusSearchData] = useState<any>(null);
   const [bookingData, setBookingData] = useState<any>(null);
 
-  // セキュリティ監視（これがないと5分放置しても画面が切り替わりません）
+  // セキュリティ監視
   useEffect(() => {
     const protectedPages: UserPage[] = ['member', 'booking', 'bus-results', 'booking-confirm', 'booking-complete'];
     if (!user && protectedPages.includes(currentUserPage)) {
@@ -52,13 +51,11 @@ export default function App() {
     }
   }, [user, currentUserPage]);
 
-  // 最新のログイン成功時の処理
   const handleLoginAsUser = () => {
     setCurrentUserPage('home');
     setLoginMessage('');
   };
 
-  // 最新のログアウト処理
   const handleLogout = async () => {
     await signOut();
     setCurrentUserPage('home');
@@ -72,7 +69,7 @@ export default function App() {
     </div>
   );
 
-  // --- 描画ロジック：管理者の場合は管理者用レイアウトを表示 ---
+  // --- 管理者ビュー ---
   if (user && isAdmin) {
     return (
       <Layout currentMainPage={currentMainPage} onMainPageChange={setCurrentMainPage}>
@@ -86,7 +83,7 @@ export default function App() {
     );
   }
 
-  // --- 描画ロジック：一般ユーザー・ゲスト ---
+  // --- 一般ユーザー・ゲストビュー ---
   return (
     <div>
       <UserHeader 
@@ -108,51 +105,46 @@ export default function App() {
         {currentUserPage === 'home' && <UserLandingPage onNavigate={setCurrentUserPage} />}
         {currentUserPage === 'login' && (
           <LoginPage 
-            onLoginAsUser={() => setCurrentUserPage('home')}
-            //onLoginAsAdmin={() => {}} // 自動判別されるため空関数でOK
+            onLoginAsUser={handleLoginAsUser}
             onShowRegister={() => setCurrentUserPage('register')}
             onShowPasswordReset={() => setCurrentUserPage('password-reset')}
             message={loginMessage}
           />
         )}
 
+        {/* 登録・パスワードリセット */}
         {currentUserPage === 'register' && (
           <RegisterPage initialData={registerData} onShowConfirm={(data) => { setRegisterData(data); setCurrentUserPage('register-confirm'); }} />
         )}
         {currentUserPage === 'register-confirm' && registerData && (
           <RegisterConfirmPage data={registerData} onBack={() => setCurrentUserPage('register')} onConfirm={() => { setLoginMessage('登録完了！ログインしてください。'); setCurrentUserPage('login'); setRegisterData(null); }} />
         )}
-
         {currentUserPage === 'password-reset' && <PasswordResetPage onBack={() => setCurrentUserPage('login')} onSendEmail={(email) => { setResetEmail(email); setCurrentUserPage('one-time-password'); }} />}
         {currentUserPage === 'one-time-password' && <OneTimePasswordPage email={resetEmail} onBack={() => setCurrentUserPage('password-reset')} onConfirm={(otp) => { setResetOtp(otp); setCurrentUserPage('new-password'); }} />}
         {currentUserPage === 'new-password' && <NewPasswordPage email={resetEmail} otp={resetOtp} onComplete={() => { setLoginMessage('パスワードを更新しました。'); setCurrentUserPage('login'); }} />}
 
-        {currentUserPage === 'member' && user && <MemberInfoPage onLogout={handleLogout} isAdmin={false} />}
+        {/* ★会員ページ：重複を削除し一本化 */}
+        {currentUserPage === 'member' && user && (
+          <MemberInfoPage onLogout={handleLogout} isAdmin={false} />
+        )}
         
-        {/* バス予約フロー */}
-        {currentUserPage === 'booking' && user && <UserBusBookingPage onShowRouteMap={() => setCurrentUserPage('route-map')} onShowBusResults={(data) => { setBusSearchData(data); setCurrentUserPage('bus-results'); }} />}
+        {/* ★バス予約：GitHub側の initialData 保持機能も統合して一本化 */}
+        {currentUserPage === 'booking' && user && (
+          <UserBusBookingPage 
+            initialData={busSearchData} 
+            onShowRouteMap={() => setCurrentUserPage('route-map')} 
+            onShowBusResults={(data) => { setBusSearchData(data); setCurrentUserPage('bus-results'); }} 
+          />
+        )}
+
+        {/* 予約確認フロー */}
         {currentUserPage === 'bus-results' && user && busSearchData && <BusResultsPage searchData={busSearchData} onBack={() => setCurrentUserPage('booking')} onConfirm={(data) => { setBookingData(data); setCurrentUserPage('booking-confirm'); }} />}
         {currentUserPage === 'booking-confirm' && user && bookingData && <BookingConfirmPage bookingData={bookingData} onBack={() => setCurrentUserPage('bus-results')} onConfirm={() => setCurrentUserPage('booking-complete')} />}
         {currentUserPage === 'booking-complete' && user && <BookingCompletePage onComplete={() => setCurrentUserPage('home')} />}
 
+        {/* 公開ページ */}
         {currentUserPage === 'map' && <MapPage />}
         {currentUserPage === 'contact' && <ContactPage onBack={() => setCurrentUserPage('home')} isAdmin={false} />}
-        {/* 会員ページ（user && を追加） */}
-        {currentUserPage === 'member' && user && (
-          <MemberInfoPage onLogout={handleLogout} isAdmin={false} />
-        )}
-
-        {/* バス予約（user && を追加し、GitHubの initialData も残す） */}
-        {currentUserPage === 'booking' && user && (
-          <UserBusBookingPage 
-            initialData={busSearchData} 
-            onShowRouteMap={() => setCurrentUserPage('route-map')}
-            onShowBusResults={(data) => {
-              setBusSearchData(data);
-              setCurrentUserPage('bus-results');
-            }}
-          />
-        )}
         {currentUserPage === 'route-map' && <RouteMapPage onBack={() => setCurrentUserPage('booking')} />}
         {currentUserPage === 'travel' && <TravelPlanPage onShowItinerary={() => setCurrentUserPage('itinerary')} />}
         {currentUserPage === 'itinerary' && <ItineraryPage />}
