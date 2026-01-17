@@ -76,6 +76,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
             throw tripError;
           }
           console.log(`BusResultPage:2. 便データを ${trips?.length || 0} 件取得しました`, trips);
+
           // 2. 「バス路線」とそれに紐づく「路線停留所」を取得
           console.log(`BusResultPage:3. バス路線取得を試みます: 路線名=${lineName}`);
           const { data: routes, error: routeError } = await supabase
@@ -86,7 +87,10 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
               路線停留所 (
                 stop_order,
                 stop_time,
-                停留所:stop_id (
+                stop_time_2,
+                stop_time_3,
+                stop_time_4,
+                停留所 (
                   stop_name
                 )
               )
@@ -104,44 +108,41 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
             console.warn("BusResultPage:便または路線が0件のため、照合をスキップします。");
             return [];
           }
+          const route = routes[0] as any;
+          const stops = route.路線停留所 || [];
+
+          // 始発停留所（stop_order: 1）を特定
+          const firstStop = stops.find((s: any) => s.stop_order === 1);
+          if (!firstStop) return [];
+
           // 3. 取得したデータを結合してフィルタリング
           console.log("実際にDBから届いた便データ:", trips);
           return (trips || [])
             .map(trip => {
-              const route = routes.find((r: any) => r.route_id === trip.route_id) as {
-                route_id: number;
-                route_name: string;
-                路線停留所: any[];
-              } | undefined;
-              if (!route) return null;
+              // この便が「何番目のダイヤ」か判定するロジック
+              const tripStartT = trip.departure_time.slice(0, 5);
+              let timeKey = 'stop_time'; // デフォルト
 
-              const stops = route.路線停留所 || [];
+              // 便の始発時刻と、停留所マスタの各列の始発時刻を比較
+              if (firstStop.stop_time?.slice(0, 5) === tripStartT) timeKey = 'stop_time';
+              else if (firstStop.stop_time_2?.slice(0, 5) === tripStartT) timeKey = 'stop_time_2';
+              else if (firstStop.stop_time_3?.slice(0, 5) === tripStartT) timeKey = 'stop_time_3';
+              else if (firstStop.stop_time_4?.slice(0, 5) === tripStartT) timeKey = 'stop_time_4';
+              else return null; // どのダイヤとも一致しない便は除外
+              
               const depStop = stops.find((s: any) => s.停留所?.stop_name === depName);
               const arrStop = stops.find((s: any) => s.停留所?.stop_name === arrName);
 
-              if (depStop && arrStop) {
-                // 1. 各時刻を 5文字(HH:MM)で取得
-                const stopDepT = depStop.stop_time.slice(0, 5); // 停留所マスタの時刻
-                const stopArrT = arrStop.stop_time.slice(0, 5); // 停留所マスタの時刻
-                const tripStartT = trip.departure_time.slice(0, 5); // 便の始発時刻
-                const searchT = targetTime.slice(0, 5); // ユーザーの検索希望時刻
+              if (depStop && arrStop && depStop.stop_order < arrStop.stop_order) {
+                const depTime = depStop[timeKey]?.slice(0, 5);
+                const arrTime = arrStop[timeKey]?.slice(0, 5);
 
-                // 2. 条件判定
-                // ・停留所の時刻が、便の始発時刻以上であること (trip.departure_time 以降の stop_time)
-                // ・停留所の時刻が、ユーザーの検索希望時刻以上であること
-                // ・出発地が到着地より前にあること（stop_order 順）
-                if (
-                  // 1. 順序が正しいか (逆走チェック)
-                  depStop.stop_order < arrStop.stop_order &&
-                  // 2. ユーザーが検索した時刻以降の便か (targetTime: 03:50 など)
-                  // ここは「停留所のマスタ時間」ではなく「便の始発時間」で判定するのが一般的です
-                  tripStartT >= searchT 
-                ) {
-                  // 表示するのはマスタの 08:35 でも、ID 2 の便として成立する
+                // ユーザーの検索希望時刻（targetTime）以降の便のみ表示
+                if (depTime && depTime >= targetTime.slice(0, 5)) {
                   return {
-                    id: trip.trip_id, // 2 や 3
-                    departureTime: stopDepT, // "08:35" (マスタの時間)
-                    arrivalTime: stopArrT,
+                    id: trip.trip_id,
+                    departureTime: depTime,
+                    arrivalTime: arrTime,
                     availableSeats: trip.capacity - (trip.reserved_count || 0),
                     totalSeats: trip.capacity,
                     fare: trip.fare
@@ -150,8 +151,8 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
               }
               return null;
             })
-            .filter(Boolean)
-            .sort((a: any, b: any) => a.departureTime.localeCompare(b.departureTime));
+            .filter((b): b is Bus => b !== null)
+            .sort((a, b) => a.departureTime.localeCompare(b.departureTime));
         };
 
         // --- 実行（アラートを1回にまとめるため await で順番に処理） ---
@@ -164,7 +165,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
           searchData.arrival,
           searchData.outboundTime
         );
-        setOutboundBuses(outboundResults as any);
+        setOutboundBuses(outboundResults);
 
         // 帰り（往復の場合のみ）
         if (searchData.tripType === '往復' && searchData.returnDate) {
@@ -175,7 +176,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
             searchData.departure,
             searchData.returnTime || '00:00'
           );
-          setReturnBuses(returnResults as any);
+          setReturnBuses(returnResults);
         }
 
       } catch (error: any) {

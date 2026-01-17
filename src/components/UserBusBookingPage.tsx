@@ -40,13 +40,13 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
   
  // 出発情報（時刻は "HH:MM" 形式で来ると想定して split する）
   const initOutboundTime = initialData?.outboundTime?.split(':') || [currentHour, currentMinute];
-  const [outboundDate, setOutboundDate] = useState(initialData?.outboundDate || today);
+  const [outboundDate, setOutboundDate] = useState(initialData?.outboundDate?.slice(0,10) || today);
   const [outboundHour, setOutboundHour] = useState(initOutboundTime[0]);
   const [outboundMinute, setOutboundMinute] = useState(initOutboundTime[1]);
   
   // 帰り情報
   const initReturnTime = initialData?.returnTime?.split(':') || [currentHour, currentMinute];
-  const [returnDate, setReturnDate] = useState(initialData?.returnDate || today);
+  const [returnDate, setReturnDate] = useState(initialData?.returnDate?.slice(0,10) || today);
   const [returnHour, setReturnHour] = useState(initReturnTime[0]);
   const [returnMinute, setReturnMinute] = useState(initReturnTime[1]);
   
@@ -253,10 +253,11 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
               <span className="min-w-[60px]">日付</span>
               <input
                 type="date"
+                min={today} // 今日以降しか選べなくなります
                 value={outboundDate}
                 onChange={(e) => setOutboundDate(e.target.value)}
                 //placeholder="YYYYMMDD"
-                className="flex-1 min-w-[200px] border-2 border-black rounded-lg px-4 py-2 bg-white"
+                className="w-[145px] border-2 border-black rounded-lg px-4 py-2 bg-white"
               />
             </div>
 
@@ -297,10 +298,11 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
                   <span className="min-w-[60px]">日付</span>
                   <input
                     type="date"
+                    min={outboundDate} // 帰り道は「行きの日付」以降のみ選択可能にする
                     value={returnDate}
                     onChange={(e) => setReturnDate(e.target.value)}
                     //placeholder="YYYYMMDD"
-                    className="flex-1 min-w-[200px] border-2 border-black rounded-lg px-4 py-2 bg-white"
+                    className="w-[145px] border-2 border-black rounded-lg px-4 py-2 bg-white"
                   />
                 </div>
 
@@ -382,13 +384,22 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
           <button
             className="flex-1 min-w-[200px] bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 transition-colors"
             onClick={() => {
+              // 過去日付チェック
+              if (outboundDate < today) {
+                alert("過去の日付で検索することはできません。");
+                return;
+              }
+              if (isTimeError) {
+                alert("往路の時間が復路の時間を超えています。");
+                return;
+              }
               if (onShowBusResults) {
                 onShowBusResults({
                   line: selectedLine,
                   departure: departureLocation,
                   arrival: arrivalLocation,
                   tripType: tripType === 'one-way' ? '片道' : '往復',
-                  outboundDate: outboundDate,
+                  outboundDate: outboundDate.slice(0,10),
                   outboundTime: `${outboundHour}:${outboundMinute}`,
                   returnDate: tripType === 'round-trip' ? returnDate : undefined,
                   returnTime: tripType === 'round-trip' ? `${returnHour}:${returnMinute}` : undefined,

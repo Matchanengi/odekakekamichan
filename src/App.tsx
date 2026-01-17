@@ -30,7 +30,7 @@ export type UserPage = 'home' | 'travel' | 'sightseeing' | 'booking' | 'login' |
 export type MainPage = 'top' | 'reservations' | 'new-reservation' | 'notifications' | 'member' | 'contact';
 
 export default function App() {
-  const { user, role, signOut, loading: authLoading } = useAuth();
+  const { user, role, profile, signOut, loading: authLoading } = useAuth();
   
   const isAdmin = role === 'admin';
 
@@ -139,7 +139,14 @@ export default function App() {
 
         {/* 予約確認フロー */}
         {currentUserPage === 'bus-results' && user && busSearchData && <BusResultsPage searchData={busSearchData} onBack={() => setCurrentUserPage('booking')} onConfirm={(data) => { setBookingData(data); setCurrentUserPage('booking-confirm'); }} />}
-        {currentUserPage === 'booking-confirm' && user && bookingData && <BookingConfirmPage bookingData={bookingData} onBack={() => setCurrentUserPage('bus-results')} onConfirm={() => setCurrentUserPage('booking-complete')} />}
+        {currentUserPage === 'booking-confirm' && user && bookingData && (
+        <BookingConfirmPage
+          userId={profile?.user_id || profile?.id} //profile から ID を渡す
+          bookingData={bookingData} 
+          onBack={() => setCurrentUserPage('bus-results')} 
+          onConfirm={() => setCurrentUserPage('booking-complete')} 
+          />
+        )}
         {currentUserPage === 'booking-complete' && user && <BookingCompletePage onComplete={() => setCurrentUserPage('home')} />}
 
         {/* 公開ページ */}

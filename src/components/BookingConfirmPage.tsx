@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 interface BookingConfirmPageProps {
   onBack: () => void;
   onConfirm: () => void;
+  userId: any;
   bookingData: {
     line?: string;
     tripId: number;
@@ -26,7 +27,7 @@ interface BookingConfirmPageProps {
   };
 }
 
-export function BookingConfirmPage({ onBack, onConfirm, bookingData }: BookingConfirmPageProps) {
+export function BookingConfirmPage({ onBack, onConfirm, userId, bookingData }: BookingConfirmPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleBookingSubmit = async () => {
@@ -58,7 +59,7 @@ export function BookingConfirmPage({ onBack, onConfirm, bookingData }: BookingCo
 
       // 行きのデータ
       bookings.push({
-        user_id: 1, // 保留のため省略（DB側でNULL許可されている場合）test
+        user_id: userId,
         trip_id: Number(bookingData.tripId), // 便ID
         boarding_id: Number(boardingId), // 乗車停留所ID
         alighting_id: Number(alightingId), // 降車停留所ID
@@ -71,7 +72,7 @@ export function BookingConfirmPage({ onBack, onConfirm, bookingData }: BookingCo
       // 往復の場合は帰りのデータも追加
       if (bookingData.tripType === '往復' && bookingData.returnDate) {
         bookings.push({
-          user_id: 1, // 保留のため省略（DB側でNULL許可されている場合）test
+          user_id: userId,
           trip_id: Number(bookingData.returnTripId), // 帰りの便ID
           boarding_id: Number(alightingId), // 帰りは出発地と目的地が逆
           alighting_id: Number(boardingId),
@@ -84,7 +85,7 @@ export function BookingConfirmPage({ onBack, onConfirm, bookingData }: BookingCo
 
       // 2. Supabaseへインサート
       const { error } = await supabase
-        .from('予約') // あなたのテーブル名に合わせて変更してください
+        .from('予約')
         .insert(bookings);
 
       if (error) throw error;
