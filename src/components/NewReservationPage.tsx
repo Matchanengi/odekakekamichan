@@ -1,88 +1,142 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Calendar, AlertCircle, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { supabase } from "./supabaseClient";
 
-type MainPage =
-  | "top"
-  | "reservations"
-  | "new-reservation"
-  | "notifications"
-  | "member";
+type MainPage = "top" | "reservations" | "new-reservation" | "notifications" | "member";
 
 interface NewReservationPageProps {
   onNavigate: (page: MainPage) => void;
 }
 
-export function NewReservationPage({
-  onNavigate,
-}: NewReservationPageProps) {
-  const [rideDate, setRideDate] = useState("2025-11-18");
-  
-  // 日付入力の自動フォーマット関数
-  const handleDateInput = (value: string) => {
-    // 数字のみを抽出
-    const numbers = value.replace(/[^\d]/g, '');
-    
-    // 8桁以上なら自動でフォーマット
-    if (numbers.length >= 8) {
-      const year = numbers.slice(0, 4);
-      const month = numbers.slice(4, 6);
-      const day = numbers.slice(6, 8);
-      return `${year}-${month}-${day}`;
-    } else if (numbers.length >= 6) {
-      const year = numbers.slice(0, 4);
-      const month = numbers.slice(4, 6);
-      const day = numbers.slice(6);
-      return `${year}-${month}-${day}`;
-    } else if (numbers.length >= 4) {
-      const year = numbers.slice(0, 4);
-      const month = numbers.slice(4);
-      return `${year}-${month}`;
-    }
-    
-    return numbers;
-  };
-  
-  const [route, setRoute] = useState("蕨野線");
-  const [adults, setAdults] = useState(1);
-  const [children, setChildren] = useState(0);
-  const [selectedTime, setSelectedTime] = useState("09:30");
-  const [boardingLocation, setBoardingLocation] =
-    useState("山田駅");
-  const [dropoffLocation, setDropoffLocation] =
-    useState("izuみの広場");
-  const [isRoundTrip, setIsRoundTrip] = useState(true);
-  const [representativeName, setRepresentativeName] =
-    useState("山田　太郎");
-  const [phoneNumber, setPhoneNumber] =
-    useState("090-1234-5678");
-  const [notes, setNotes] = useState(
-    "電話にて予約受付（担当：佐藤）",
-  );
+export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
+  const [routes, setRoutes] = useState<any[]>([]);
+  const [allStops, setAllStops] = useState<any[]>([]);
+  const [trips, setTrips] = useState<any[]>([]);
+  const [boardingStopTimes, setBoardingStopTimes] = useState<any>(null);
+  const [dropoffStopTimes, setDropoffStopTimes] = useState<any>(null);
 
-  const schedules = [
-    {
-      time: "09:30",
-      from: "山田駅",
-      to: "izuみの広場",
-      available: 5,
-      total: 10,
-    },
-    {
-      time: "11:00",
-      from: "山田駅",
-      to: "izuみの広場",
-      available: 8,
-      total: 10,
-    },
-    {
-      time: "13:30",
-      from: "山田駅",
-      to: "izuみの広場",
-      available: 0,
-      total: 10,
-      full: true,
-    },
-  ];
+  const [rideDate, setRideDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedRouteId, setSelectedRouteId] = useState<number | "">("");
+  const [selectedTripId, setSelectedTripId] = useState<number | "">("");
+  const [adults, setAdults] = useState<number>(1);
+  const [children, setChildren] = useState<number>(0);
+  const [boardingStopId, setBoardingStopId] = useState("");
+  const [dropoffStopId, setDropoffStopId] = useState("");
+  const [representativeName, setRepresentativeName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const totalCount = adults + children;
+  const selectedTrip = trips.find(t => t.trip_id === selectedTripId);
+  const availableSeats = selectedTrip ? selectedTrip.capacity - selectedTrip.reserved_count : 0;
+  const isOverCapacity = selectedTripId && totalCount > availableSeats;
+
+  const isFormValid = 
+    selectedTripId && 
+    totalCount > 0 && 
+    !isOverCapacity &&
+    representativeName.trim() !== "" && 
+    phoneNumber.trim() !== "" &&
+    boardingStopId !== "" &&
+    dropoffStopId !== "";
+
+  useEffect(() => {
+    async function fetchMasterData() {
+      const { data: routeData } = await supabase.from("バス路線").select("*");
+      const { data: stopData } = await supabase.from("停留所").select("*");
+      if (routeData) setRoutes(routeData);
+      if (stopData) setAllStops(stopData);
+    }
+    fetchMasterData();
+  }, []);
+
+  // --- 修正ポイント: .single() を使わず配列で取得 ---
+  useEffect(() => {
+    async function fetchStopDetails() {
+      if (!selectedRouteId || !boardingStopId || !dropoffStopId) {
+        setBoardingStopTimes(null);
+        setDropoffStopTimes(null);
+        return;
+      }
+
+      // 乗車停留所のデータ取得
+      const { data: bData } = await supabase
+        .from("路線停留所")
+        .select("*")
+        .eq("route_id", selectedRouteId)
+        .eq("stop_id", boardingStopId); // single() は使わない
+      
+      // 降車停留所のデータ取得
+      const { data: dData } = await supabase
+        .from("路線停留所")
+        .select("*")
+        .eq("route_id", selectedRouteId)
+        .eq("stop_id", dropoffStopId); // single() は使わない
+
+      // 複数ヒットしても、最初の1件をステートに入れる
+      setBoardingStopTimes(bData && bData.length > 0 ? bData[0] : null);
+      setDropoffStopTimes(dData && dData.length > 0 ? dData[0] : null);
+    }
+    fetchStopDetails();
+  }, [selectedRouteId, boardingStopId, dropoffStopId]);
+
+  useEffect(() => {
+    async function fetchTrips() {
+      if (!selectedRouteId || !rideDate || !boardingStopId || !dropoffStopId) {
+        setTrips([]);
+        setSelectedTripId("");
+        return;
+      }
+      const { data } = await supabase
+        .from("便")
+        .select("*")
+        .eq("route_id", selectedRouteId)
+        .eq("operation_date", rideDate)
+        .order('trip_id', { ascending: true });
+      if (data) setTrips(data);
+    }
+    fetchTrips();
+  }, [selectedRouteId, rideDate, boardingStopId, dropoffStopId]);
+
+  const getSpecificTimeByOrder = (stopData: any, index: number) => {
+    if (!stopData) return "--:--";
+    const timeColumns = ["stop_time", "stop_time_2", "stop_time_3", "stop_time_4"];
+    const time = stopData[timeColumns[index]];
+    return time ? time.slice(0, 5) : "--:--";
+  };
+
+const filteredStops = allStops.filter((stop) => {
+  // stop オブジェクトの中から "route_id_" で始まるキーの値だけを取り出す
+  const routeIds = Object.keys(stop)
+    .filter(key => key.startsWith('route_id_'))
+    .map(key => Number(stop[key]))
+    .filter(id => id !== 0 && !isNaN(id)); // 0や空を除外
+
+  return routeIds.includes(Number(selectedRouteId));
+});
+
+  const handleRegister = async () => {
+    if (!isFormValid) return;
+    const { error } = await supabase.from("予約").insert([{
+      trip_id: selectedTripId,
+      boarding_id: Number(boardingStopId),
+      alighting_id: Number(dropoffStopId),
+      adult_count: adults,
+      child_count: children,
+      reserved_count: totalCount,
+      reserved_at: new Date().toISOString(),
+      status: "confirmed",
+      representative_name: representativeName,
+      phone_number: phoneNumber,
+      notes: notes
+    }]);
+
+    if (error) alert("エラー: " + error.message);
+    else {
+      alert("予約を完了しました");
+      onNavigate("reservations");
+    }
+  };
 
   return (
     <div className="bg-green-700 rounded-3xl p-3 sm:p-8">
@@ -90,313 +144,161 @@ export function NewReservationPage({
         <div className="flex flex-col md:flex-row">
           {/* Left Sidebar */}
           <aside className="w-full md:w-64 md:pr-8 mb-4 md:mb-0">
-            <div className="space-y-4 flex flex-row md:flex-col gap-2 md:gap-0 md:space-y-4">
-              <button
-                onClick={() => onNavigate("reservations")}
-                className="w-full bg-green-700 text-white py-4 md:py-6 px-4 md:px-6 rounded-2xl border-4 border-white text-center text-lg md:text-xl"
-              >
-                <div className="leading-tight">予約管理</div>
+            <div className="space-y-4 flex flex-row md:flex-col gap-2 md:gap-0">
+              <button onClick={() => onNavigate("reservations")} className="w-full bg-white text-black py-4 md:py-6 rounded-2xl border-4 border-green-700 text-center">
+                予約管理
               </button>
-              <button
-                onClick={() => onNavigate("new-reservation")}
-                className="w-full bg-white text-black py-4 md:py-6 px-4 md:px-6 rounded-2xl border-4 border-green-700 text-center text-lg md:text-xl"
-              >
-                <div className="leading-tight">新規予約</div>
-                <div className="leading-tight">登録</div>
+              <button onClick={() => onNavigate("new-reservation")} className="w-full bg-green-700 text-white py-4 md:py-6 rounded-2xl border-4 border-white text-center">
+                新規予約登録
               </button>
             </div>
           </aside>
 
-          {/* Main Content */}
-          <div className="flex-1 max-h-[600px] overflow-y-auto md:pr-4">
-            <div className="mb-4">
-              <h2 className="text-xl sm:text-2xl">・新規予約登録</h2>
-              <p className="text-xs sm:text-sm text-red-600">
-                必須項目には * がついています
-              </p>
-            </div>
+          <main className="flex-1 space-y-6 h-[80vh] overflow-y-auto px-2">
+            <h2 className="text-3xl font-black border-b-4 border-green-50 pb-2 flex items-center gap-2">
+              新規予約登録
+            </h2>
 
-            {/* Section 1: 乗車便の選択 */}
-            <div className="mb-6 sm:mb-8">
-              <h3 className="text-lg sm:text-xl mb-3 sm:mb-4">
-                1. ご乗車便の選択
-              </h3>
+            {/* grid-cols-2 の中で「2列分」使うように指定します */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* col-span-full を追加して、画面横幅いっぱいに広げます */}
+              <div className="md:col-span-2 p-5 bg-gray-50 rounded-3xl border border-gray-100">
+                
+                {/* 中身を横並びにする設定 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="block">
+                    <span className="text-xs font-bold text-gray-500 ml-1">乗車日</span>
+                    <input type="date" value={rideDate} onChange={(e) => setRideDate(e.target.value)} className="w-full mt-1 border-2 border-black rounded-xl p-3 bg-white" />
+                  </label>
 
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                  <div className="bg-green-700 text-white px-3 sm:px-6 py-2 rounded-lg min-w-[100px] sm:min-w-[120px] text-sm sm:text-base text-center">
-                    <span className="text-red-600">*</span>
-                    乗車日
-                  </div>
-                  <input
-                    type="text"
-                    value={rideDate}
-                    onChange={(e) =>
-                      setRideDate(handleDateInput(e.target.value))
-                    }
-                    placeholder="YYYYMMDD"
-                    className="border-2 border-black rounded-lg px-3 sm:px-4 py-2 w-full sm:w-64 text-sm sm:text-base"
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                  <div className="bg-green-700 text-white px-3 sm:px-6 py-2 rounded-lg min-w-[100px] sm:min-w-[120px] text-sm sm:text-base text-center">
-                    <span className="text-red-600">*</span>
-                    路線名
-                  </div>
-                  <div className="relative w-full sm:w-64">
-                    <select
-                      value={route}
-                      onChange={(e) => setRoute(e.target.value)}
-                      className="border-2 border-black rounded-lg px-3 sm:px-4 py-2 w-full appearance-none bg-white text-sm sm:text-base"
-                    >
-                      <option>蕨野線</option>
-                      <option>白川線</option>
-                      <option>谷相線</option>
+                  <label className="block">
+                    <span className="text-xs font-bold text-gray-500 ml-1">路線名</span>
+                    <select value={selectedRouteId} onChange={(e) => setSelectedRouteId(Number(e.target.value))} className="w-full mt-1 border-2 border-black rounded-xl p-3 bg-white">
+                      <option value="">選択してください</option>
+                      {routes.map(r => <option key={r.route_id} value={r.route_id}>{r.route_name}</option>)}
                     </select>
-                    <ChevronDown
-                      className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 pointer-events-none"
-                      size={20}
-                    />
-                  </div>
-                  <span className="text-gray-500 text-xs sm:text-sm">
-                    （路線を選択）
-                  </span>
+                  </label>
                 </div>
 
-                <div>
-                  <h4 className="mb-2 text-sm sm:text-base">
-                    <span className="text-red-600">*</span>
-                    時刻表 / 空席状況
-                  </h4>
-                  <div className="space-y-2">
-                    {schedules.map((schedule) => (
-                      <div
-                        key={schedule.time}
-                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={
-                            selectedTime === schedule.time
-                          }
-                          onChange={() =>
-                            setSelectedTime(schedule.time)
-                          }
-                          className="w-6 h-6 self-start sm:self-auto"
-                          disabled={schedule.full}
-                        />
-                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 flex-1">
-                          <div
-                            className={`border-2 border-black rounded-lg px-3 sm:px-6 py-2 flex items-center gap-2 sm:gap-4 flex-1 text-sm sm:text-base ${schedule.full ? "bg-gray-200" : ""}`}
-                          >
-                            <span className="min-w-[60px] sm:min-w-[80px]">
-                              {schedule.time} 発
-                            </span>
-                            <span>{schedule.from}</span>
-                            <span>→</span>
-                            <span>{schedule.to}</span>
-                          </div>
-                          <div
-                            className={`border-2 border-black rounded-lg px-3 sm:px-4 py-2 min-w-[100px] text-center text-sm sm:text-base ${schedule.full ? "bg-gray-200" : ""}`}
-                          >
-                            <span
-                              className={
-                                schedule.full
-                                  ? "text-red-600"
-                                  : ""
-                              }
-                            >
-                              空席：{schedule.available}/
-                              {schedule.total}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             </div>
 
-            {/* Section 2: 人数と乗車場所の入力 */}
-            <div className="mb-6 sm:mb-8">
-              <h3 className="text-lg sm:text-xl mb-3 sm:mb-4">
-                2. 人数と乗車場所の入力
-              </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* md:col-span-2 を追加して、親のグリッド内で横幅いっぱいに広げます */}
+            <div className="md:col-span-2 p-5 bg-gray-50 rounded-3xl border border-gray-100">
+              
+              {/* 内部を grid にし、PCサイズ(md)で 2列に分割します */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* 乗車場所 */}
+                <label className="block">
+                  <span className="text-xs font-bold text-gray-500 ml-1">乗車場所</span>
+                  <select 
+                    value={boardingStopId} 
+                    onChange={(e) => setBoardingStopId(e.target.value)} 
+                    className="w-full mt-1 border-2 border-black rounded-xl p-3 bg-white"
+                  >
+                    <option value="">選択してください</option>
+                    {filteredStops.map(s => <option key={s.stop_id} value={s.stop_id}>{s.stop_name}</option>)}
+                  </select>
+                </label>
 
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
-                  <div className="text-sm sm:text-base">
-                    <span className="text-red-600">*</span>人数
-                  </div>
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm sm:text-base">おとな</span>
-                      <input
-                        type="text"
-                        value={`${adults}人`}
-                        readOnly
-                        onClick={() => {
-                          const num = prompt('おとなの人数を入力してください（0-9）', adults.toString());
-                          if (num !== null && !isNaN(parseInt(num))) {
-                            const parsed = Math.max(0, Math.min(9, parseInt(num)));
-                            setAdults(parsed);
-                          }
-                        }}
-                        className="w-[80px] border-2 border-black rounded-lg px-3 py-1 bg-white text-center cursor-pointer text-sm sm:text-base"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm sm:text-base">こども</span>
-                      <input
-                        type="text"
-                        value={`${children}人`}
-                        readOnly
-                        onClick={() => {
-                          const num = prompt('こどもの人数を入力してください（0-9）', children.toString());
-                          if (num !== null && !isNaN(parseInt(num))) {
-                            const parsed = Math.max(0, Math.min(9, parseInt(num)));
-                            setChildren(parsed);
-                          }
-                        }}
-                        className="w-[80px] border-2 border-black rounded-lg px-3 py-1 bg-white text-center cursor-pointer text-sm sm:text-base"
-                      />
-                    </div>
-                  </div>
-                </div>
+                {/* 降車場所 */}
+                <label className="block">
+                  <span className="text-xs font-bold text-gray-500 ml-1">降車場所</span>
+                  <select 
+                    value={dropoffStopId} 
+                    onChange={(e) => setDropoffStopId(e.target.value)} 
+                    className="w-full mt-1 border-2 border-black rounded-xl p-3 bg-white"
+                  >
+                    <option value="">選択してください</option>
+                    {filteredStops.map(s => <option key={s.stop_id} value={s.stop_id}>{s.stop_name}</option>)}
+                  </select>
+                </label>
 
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                    <div className="bg-green-700 text-white px-3 sm:px-6 py-2 rounded-lg min-w-[100px] sm:min-w-[120px] text-sm sm:text-base text-center">
-                      <span className="text-red-600">*</span>
-                      乗車場所
-                    </div>
-                    <div className="relative w-full sm:w-64">
-                      <select
-                        value={boardingLocation}
-                        onChange={(e) =>
-                          setBoardingLocation(e.target.value)
-                        }
-                        className="border-2 border-black rounded-lg px-3 sm:px-4 py-2 w-full appearance-none bg-white text-sm sm:text-base"
-                      >
-                        <option>山田駅</option>
-                        <option>中央公園</option>
-                        <option>市役所前</option>
-                      </select>
-                      <ChevronDown
-                        className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 pointer-events-none"
-                        size={20}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                    <div className="bg-green-700 text-white px-3 sm:px-6 py-2 rounded-lg min-w-[100px] sm:min-w-[120px] text-sm sm:text-base text-center">
-                      <span className="text-red-600">*</span>
-                      降車場所
-                    </div>
-                    <div className="relative w-full sm:w-64">
-                      <select
-                        value={dropoffLocation}
-                        onChange={(e) =>
-                          setDropoffLocation(e.target.value)
-                        }
-                        className="border-2 border-black rounded-lg px-3 sm:px-4 py-2 w-full appearance-none bg-white text-sm sm:text-base"
-                      >
-                        <option>izuみの広場</option>
-                        <option>駅前ロータリー</option>
-                        <option>商店街入口</option>
-                      </select>
-                      <ChevronDown
-                        className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 pointer-events-none"
-                        size={20}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm sm:text-base">往復</span>
-                    <input
-                      type="checkbox"
-                      checked={isRoundTrip}
-                      onChange={(e) =>
-                        setIsRoundTrip(e.target.checked)
-                      }
-                      className="w-5 h-5 sm:w-6 sm:h-6"
-                    />
-                  </div>
-                </div>
               </div>
-            </div>
-
-            {/* Section 3: お客様情報の入力 */}
-            <div className="mb-6 sm:mb-8">
-              <h3 className="text-lg sm:text-xl mb-3 sm:mb-4">
-                3. お客様情報の入力
-              </h3>
-
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                  <div className="bg-green-700 text-white px-3 sm:px-6 py-2 rounded-lg min-w-[100px] sm:min-w-[120px] text-sm sm:text-base text-center">
-                    <span className="text-red-600">*</span>
-                    代表者名
-                  </div>
-                  <input
-                    type="text"
-                    value={representativeName}
-                    onChange={(e) =>
-                      setRepresentativeName(e.target.value)
-                    }
-                    className="border-2 border-black rounded-lg px-3 sm:px-4 py-2 flex-1 text-sm sm:text-base"
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                  <div className="bg-green-700 text-white px-3 sm:px-6 py-2 rounded-lg min-w-[100px] sm:min-w-[120px] text-sm sm:text-base text-center">
-                    <span className="text-red-600">*</span>
-                    電話番号
-                  </div>
-                  <input
-                    type="text"
-                    value={phoneNumber}
-                    onChange={(e) =>
-                      setPhoneNumber(e.target.value)
-                    }
-                    className="border-2 border-black rounded-lg px-3 sm:px-4 py-2 flex-1 text-sm sm:text-base"
-                  />
-                </div>
-
-                <div>
-                  <div className="mb-2 text-sm sm:text-base">
-                    対応履歴メモ（任意）：
-                  </div>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="border-2 border-black rounded-lg px-3 sm:px-4 py-2 w-full h-24 sm:h-32 text-sm sm:text-base"
-                    placeholder="電話にて予約受付（担当：佐藤）"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mt-6 sm:mt-8">
-              <button
-                onClick={() => onNavigate("reservations")}
-                className="bg-green-700 text-white px-8 sm:px-12 py-2 sm:py-3 rounded-lg text-sm sm:text-base w-full sm:w-auto"
-              >
-                予約内容を登録する
-              </button>
-              <button
-                onClick={() => onNavigate("reservations")}
-                className="bg-white border-2 border-black px-8 sm:px-12 py-2 sm:py-3 rounded-lg text-red-600 text-sm sm:text-base w-full sm:w-auto"
-              >
-                キャンセル
-              </button>
             </div>
           </div>
+
+            <section className="bg-green-50 p-6 rounded-3xl border-2 border-green-100 flex flex-wrap gap-8 items-center">
+              <div className="flex items-center gap-3 font-bold text-green-800">
+                <span>おとな</span>
+                <input type="number" value={adults} onChange={(e) => setAdults(Number(e.target.value))} className="w-20 border-2 border-black rounded-xl p-2 text-center" min="0" />
+              </div>
+              <div className="flex items-center gap-3 font-bold text-green-800">
+                <span>こども</span>
+                <input type="number" value={children} onChange={(e) => setChildren(Number(e.target.value))} className="w-20 border-2 border-black rounded-xl p-2 text-center" min="0" />
+              </div>
+            </section>
+
+            <section className="space-y-4">
+  <h3 className="font-bold text-gray-700 flex items-center gap-2"><Clock size={18} />乗車便の選択</h3>
+  {(!selectedRouteId || !boardingStopId || !dropoffStopId) ? (
+    <div className="p-8 border-2 border-dashed border-gray-200 rounded-3xl text-center text-gray-400 text-sm">路線と停留所を選択してください</div>
+  ) : (
+    <div className="space-y-3">
+      {trips
+        // ★ ここでフィルターを追加：両方の時刻が有効な便だけを残す
+        .filter((_, index) => {
+          const bTime = getSpecificTimeByOrder(boardingStopTimes, index);
+          const dTime = getSpecificTimeByOrder(dropoffStopTimes, index);
+          return bTime !== "--:--" && dTime !== "--:--";
+        })
+        .map((trip) => {
+          // すでにフィルターされているので、ここでは必ず時刻がある前提で取得できる
+          // ただし trips 全体の index が必要なので、元の trips からの index を再計算するか、
+          // map の中で再度 index を特定する必要があります。
+          
+          // より確実な方法は、先に trips に時刻を付与した配列を作ることです（下記参照）
+          const originalIndex = trips.findIndex(t => t.trip_id === trip.trip_id);
+          const bTime = getSpecificTimeByOrder(boardingStopTimes, originalIndex);
+          const dTime = getSpecificTimeByOrder(dropoffStopTimes, originalIndex);
+          const isFull = trip.reserved_count >= trip.capacity;
+
+          return (
+            <label key={trip.trip_id} className={`flex items-center gap-4 p-4 border-2 rounded-2xl cursor-pointer transition-all ${selectedTripId === trip.trip_id ? "border-green-600 bg-green-50" : "border-gray-100 bg-white"}`}>
+              <input type="radio" name="trip" checked={selectedTripId === trip.trip_id} disabled={isFull || totalCount === 0} onChange={() => setSelectedTripId(trip.trip_id)} className="w-6 h-6 accent-green-600" />
+              <div className="flex-1 flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <span className="text-xl font-black text-gray-800">{bTime}</span>
+                  <ArrowRight size={16} className="text-gray-300" />
+                  <span className="text-xl font-black text-gray-800">{dTime}</span>
+                </div>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full ${isFull ? "bg-red-100 text-red-600" : "bg-green-100 text-green-700"}`}>
+                  {isFull ? "満席" : `空き ${trip.capacity - trip.reserved_count} 席`}
+                </span>
+              </div>
+            </label>
+          );
+        })}
+      
+      {/* フィルターした結果、表示できる便が0件だった場合の表示 */}
+      {trips.length > 0 && trips.filter((_, i) => getSpecificTimeByOrder(boardingStopTimes, i) !== "--:--" && getSpecificTimeByOrder(dropoffStopTimes, i) !== "--:--").length === 0 && (
+        <p className="text-center text-gray-400 py-4 text-sm italic">ご指定の区間で運行している便はありません</p>
+      )}
+    </div>
+  )}
+</section>
+
+            <section className="space-y-4 pt-4 border-t border-gray-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" placeholder="代表者名 *" value={representativeName} onChange={(e) => setRepresentativeName(e.target.value)} className="w-full border-2 border-black rounded-xl p-3 outline-none" />
+                <input type="tel" placeholder="電話番号 *" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d]/g, ""))} className="w-full border-2 border-black rounded-xl p-3 outline-none" />
+              </div>
+              <textarea placeholder="メモ" value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full border-2 border-black rounded-xl p-3 h-20 resize-none outline-none" />
+            </section>
+
+            <div className="flex flex-col items-center py-6">
+              <button 
+                onClick={handleRegister} 
+                disabled={!isFormValid}
+                className={`w-full max-w-sm py-4 rounded-2xl font-black text-xl shadow-lg transition-all ${isFormValid ? "bg-green-700 text-white" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
+              >
+                予約を確定する
+              </button>
+            </div>
+          </main>
         </div>
       </div>
     </div>
