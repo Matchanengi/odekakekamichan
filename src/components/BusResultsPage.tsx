@@ -105,40 +105,67 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
 
           
           if (!trips || trips.length === 0 || !routes || routes.length === 0) {
-            console.warn("BusResultPage:便または路線が0件のため、照合をスキップします。");
+            console.warn("BusResultPage:便または路線が0件のため、照合をスキップします。");            
             return [];
           }
           const route = routes[0] as any;
           const stops = route.路線停留所 || [];
 
-          // 始発停留所（stop_order: 1）を特定
-          const firstStop = stops.find((s: any) => s.stop_order === 1);
-          if (!firstStop) return [];
+          // 1. この路線に紐づく停留所の中で最小の stop_order を特定する
+          const stopOrders = stops.map((s: any) => s.stop_order);
+          const minOrder = Math.min(...stopOrders);
+
+          // 2. その最小 order を持つ停留所を「始発」として特定
+          const firstStop = stops.find((s: any) => s.stop_order === minOrder);
+          if (!firstStop) {
+            console.log("❌ 該当路線の停留所が見つかりません");
+            return [];
+          }
+
+          // デバッグ用：どの番号を始発として認識したか出力
+          console.log(`✅ 始発判定: ${firstStop.停留所?.stop_name} (stop_order: ${minOrder})`);
 
           // 3. 取得したデータを結合してフィルタリング
           console.log("実際にDBから届いた便データ:", trips);
           return (trips || [])
             .map(trip => {
               // この便が「何番目のダイヤ」か判定するロジック
-              const tripStartT = trip.departure_time.slice(0, 5);
-              let timeKey = 'stop_time'; // デフォルト
+              const tripStartT = trip.departure_time.split(':').slice(0, 2).join(':');
+              let timeKey = ''; 
+              // const tripStartT = trip.departure_time.slice(0, 5);
+              // let timeKey = 'stop_time'; // デフォルト
 
-              // 便の始発時刻と、停留所マスタの各列の始発時刻を比較
-              if (firstStop.stop_time?.slice(0, 5) === tripStartT) timeKey = 'stop_time';
-              else if (firstStop.stop_time_2?.slice(0, 5) === tripStartT) timeKey = 'stop_time_2';
-              else if (firstStop.stop_time_3?.slice(0, 5) === tripStartT) timeKey = 'stop_time_3';
-              else if (firstStop.stop_time_4?.slice(0, 5) === tripStartT) timeKey = 'stop_time_4';
-              else return null; // どのダイヤとも一致しない便は除外
+              // 停留所マスタの各時刻列と比較
+              const checkMatch = (masterTime: string | null) => {
+                if (!masterTime) return false;
+                return masterTime.split(':').slice(0, 2).join(':') === tripStartT;
+              };
+
+              if (checkMatch(firstStop.stop_time)) timeKey = 'stop_time';
+              else if (checkMatch(firstStop.stop_time_2)) timeKey = 'stop_time_2';
+              else if (checkMatch(firstStop.stop_time_3)) timeKey = 'stop_time_3';
+              else if (checkMatch(firstStop.stop_time_4)) timeKey = 'stop_time_4';
               
+              if (!timeKey) {
+                console.warn(`便ID:${trip.trip_id} は路線の始発時刻(${tripStartT})と一致するダイヤがありません`);
+                return null;
+              }
+
               const depStop = stops.find((s: any) => s.停留所?.stop_name === depName);
               const arrStop = stops.find((s: any) => s.停留所?.stop_name === arrName);
 
               if (depStop && arrStop && depStop.stop_order < arrStop.stop_order) {
-                const depTime = depStop[timeKey]?.slice(0, 5);
-                const arrTime = arrStop[timeKey]?.slice(0, 5);
+                console.log(`--- 便ID: ${trip.trip_id} の詳細解析 ---`);
+                console.log(`選択された timeKey: ${timeKey}`);
+                console.log(`降車停留所オブジェクト:`, arrStop);
+                console.log(`生データへのアクセス結果: arrStop['${timeKey}'] =`, arrStop[timeKey]);
+                const depTime = depStop[timeKey]?.split(':').slice(0, 2).join(':');
+                const arrTime = arrStop[timeKey]?.split(':').slice(0, 2).join(':');
+                console.log(`最終判定: 出発=${depTime}, 到着=${arrTime}`);
+                const searchTime = targetTime.split(':').slice(0, 2).join(':');
 
                 // ユーザーの検索希望時刻（targetTime）以降の便のみ表示
-                if (depTime && depTime >= targetTime.slice(0, 5)) {
+                if (depTime && depTime >= searchTime) {
                   return {
                     id: trip.trip_id,
                     departureTime: depTime,

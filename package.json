@@ -46,6 +46,7 @@
     "cmdk": "^1.1.1",
     "create-vite": "^8.2.0",
     "date-fns": "^4.1.0",
+    "embed": "^0.0.1",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.562.0",
