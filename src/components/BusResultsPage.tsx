@@ -86,6 +86,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
               route_name,
               路線停留所 (
                 stop_order,
+                direction,
                 stop_time,
                 stop_time_2,
                 stop_time_3,
@@ -111,12 +112,16 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
           const route = routes[0] as any;
           const stops = route.路線停留所 || [];
 
+          // 行きなら direction: 0、帰りなら direction: 1 のレコードを使う想定
+          const isReturnSearch = depName !== searchData.departure; // 出発地が検索条件と違う＝帰り
+          const currentDirectionStops = stops.filter((s: any) => s.direction === (isReturnSearch ? 1 : 0));
+
           // 1. この路線に紐づく停留所の中で最小の stop_order を特定する
-          const stopOrders = stops.map((s: any) => s.stop_order);
+          const stopOrders = currentDirectionStops.map((s: any) => s.stop_order);
           const minOrder = Math.min(...stopOrders);
 
           // 2. その最小 order を持つ停留所を「始発」として特定
-          const firstStop = stops.find((s: any) => s.stop_order === minOrder);
+          const firstStop = currentDirectionStops.find((s: any) => s.stop_order === minOrder);
           if (!firstStop) {
             console.log("❌ 該当路線の停留所が見つかりません");
             return [];
@@ -151,8 +156,8 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
                 return null;
               }
 
-              const depStop = stops.find((s: any) => s.停留所?.stop_name === depName);
-              const arrStop = stops.find((s: any) => s.停留所?.stop_name === arrName);
+              const depStop = currentDirectionStops.find((s: any) => s.停留所?.stop_name === depName);
+              const arrStop = currentDirectionStops.find((s: any) => s.停留所?.stop_name === arrName);
 
               if (depStop && arrStop && depStop.stop_order < arrStop.stop_order) {
                 console.log(`--- 便ID: ${trip.trip_id} の詳細解析 ---`);
