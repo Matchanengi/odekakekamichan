@@ -105,7 +105,8 @@ export function NewPasswordPage({ email, otp, onComplete }: NewPasswordPageProps
                   type={showNewPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-1/2 flex-1 px-4 py-3 border-2 border-blue-900 rounded-lg outline-none focus:ring-2 focus:ring-cyan-300"
+                  
+                  className="w-full flex-1 px-4 py-3 border-2 border-blue-900 rounded-lg outline-none focus:ring-2 focus:ring-cyan-300"
                   placeholder="もう一度入力"
                   disabled={loading}
                 />
