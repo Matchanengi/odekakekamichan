@@ -28,11 +28,12 @@ export function ReservationManagementPage({ onNavigate }: ReservationManagementP
   const [editReservation, setEditReservation] = useState<any | null>(null);
 
   // --- データ取得関数 ---
+// --- データ取得関数 ---
 async function fetchReservations() {
   try {
     setLoading(true);
 
-    const [res, trips, users, routes] = await Promise.all([
+    const [res, trips, users, routesData] = await Promise.all([
       supabase.from('予約').select('*').order('reservation_id', { ascending: false }),
       supabase.from('便').select('trip_id, operation_date, route_id'),
       supabase.from('ユーザ').select('id, name'),
@@ -41,38 +42,42 @@ async function fetchReservations() {
 
     if (res.error) throw res.error;
 
+    // デバッグログ
+    console.log("【チェック】取得した全ユーザ数:", users.data?.length);
+
     const joinedData = (res.data || []).map((reservation: any) => {
+      // 1. 便情報の紐付け
       const trip = trips.data?.find(t => String(t.trip_id) === String(reservation.trip_id));
+      
+      // 2. ユーザ情報の紐付け
       const user = users.data?.find(u => String(u.id) === String(reservation.user_id));
-      const routeInfo = routes.data?.find(r => String(r.route_id) === String(trip?.route_id));
+      
+      // 3. 路線情報の紐付け（ここが ReferenceError の原因でした）
+      const routeInfo = routesData.data?.find(r => String(r.route_id) === String(trip?.route_id));
 
       return {
         ...reservation,
         id: reservation.reservation_id,
-        // reserved_count を使用
         displayCount: reservation.reserved_count || 0,
         便: trip || { operation_date: "不明", route_id: "-" },
-        利用者: { name: user?.name || `ID: ${reservation.user_id}` },
+        // RLSが修正されれば user.name が表示されます
+        利用者: { name: user ? user.name : `不明 (ID: ${reservation.user_id})` },
         routeName: routeInfo ? routeInfo.route_name : "不明"
       };
     });
 
-    setAllReservations(joinedData);
-
-    // 紐付け後の joinedData を日付順にソートするコード
     const sortedData = joinedData.sort((a, b) => {
       const dateA = a.便?.operation_date || "";
       const dateB = b.便?.operation_date || "";
-      return dateA.localeCompare(dateB); // 文字列として昇順比較
+      return dateA.localeCompare(dateB);
     });
 
     setAllReservations(sortedData);
 
-    // 初期表示：今日 & (active or cancel)
-    const today = new Date().toLocaleDateString('sv-SE');
-    const initialDisplay = joinedData.filter(res => {
+    const todayStr = new Date().toLocaleDateString('sv-SE');
+    const initialDisplay = sortedData.filter(res => {
       const opDate = res.便?.operation_date?.replace(/\//g, '-');
-      return opDate === today && (res.status === "active" || res.status === "cancel");
+      return opDate === todayStr && (res.status === "active" || res.status === "cancel");
     });
     setDisplayReservations(initialDisplay);
 
@@ -82,7 +87,6 @@ async function fetchReservations() {
     setLoading(false);
   }
 }
-
   useEffect(() => {
     fetchReservations();
   }, []);
