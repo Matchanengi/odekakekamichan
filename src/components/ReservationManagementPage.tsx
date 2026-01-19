@@ -224,7 +224,19 @@ export function ReservationManagementPage({ onNavigate }: ReservationManagementP
       </div>
 
       <ReservationDetailModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} reservation={selectedReservation} onUpdate={fetchReservations} />
-      {editReservation && <ReservationEditModal isOpen={!!editReservation} onClose={() => setEditReservation(null)} reservation={editReservation} />}
+      {/* モダル類 */}
+      {editReservation && (
+        <ReservationEditModal
+          isOpen={!!editReservation}
+          onClose={() => setEditReservation(null)}
+          reservation={editReservation}
+          // ★ここを追加：更新が完了した時にデータを再取得する
+          onUpdate={() => {
+            fetchReservations(); // データを最新に更新
+            setEditReservation(null); // モーダルを閉じる
+          }}
+        />
+      )}
     </div>
   );
 }
