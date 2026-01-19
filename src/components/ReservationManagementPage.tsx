@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "./supabaseClient"; // パスはご自身の環境に合わせてください
+import { supabase } from "./supabaseClient";
 import { ReservationDetailModal } from "./ReservationDetailModal";
 import { ReservationEditModal } from "./ReservationEditModal";
 
@@ -10,141 +10,141 @@ interface ReservationManagementPageProps {
 }
 
 export function ReservationManagementPage({ onNavigate }: ReservationManagementPageProps) {
-  // --- 状態管理 ---
-  
   const [loading, setLoading] = useState(true);
-  const [allReservations, setAllReservations] = useState<any[]>([]); // 元データ
-  const [displayReservations, setDisplayReservations] = useState<any[]>([]); // 表示用データ
+  const [allReservations, setAllReservations] = useState<any[]>([]); 
+  const [displayReservations, setDisplayReservations] = useState<any[]>([]);
   
-    // YYYY-MM-DD 形式で今日の日付を取得
   const today = new Date().toLocaleDateString('sv-SE');
-
-  const [startDate, setStartDate] = useState(today); // 初期値を今日に
-  const [endDate, setEndDate] = useState(today);     // 初期値を今日に
-  const [route, setRoute] = useState("すべての路線");
-  const [status, setStatus] = useState("すべて");
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+  const [status, setStatus] = useState("all");
   
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<any | null>(null);
   const [editReservation, setEditReservation] = useState<any | null>(null);
 
-  // --- データ取得関数 ---
-// --- データ取得関数 ---
-async function fetchReservations() {
-  try {
-    setLoading(true);
-
-    const [res, trips, users, routesData] = await Promise.all([
-      supabase.from('予約').select('*').order('reservation_id', { ascending: false }),
-      supabase.from('便').select('trip_id, operation_date, route_id'),
-      supabase.from('ユーザ').select('id, name'),
-      supabase.from('バス路線').select('route_id, route_name')
-    ]);
-
-    if (res.error) throw res.error;
-
-    // デバッグログ
-    console.log("【チェック】取得した全ユーザ数:", users.data?.length);
-
-    const joinedData = (res.data || []).map((reservation: any) => {
-      // 1. 便情報の紐付け
-      const trip = trips.data?.find(t => String(t.trip_id) === String(reservation.trip_id));
+  async function fetchReservations() {
+    try {
+      setLoading(true);
       
-      // 2. ユーザ情報の紐付け
-      const user = users.data?.find(u => String(u.id) === String(reservation.user_id));
-      
-      // 3. 路線情報の紐付け（ここが ReferenceError の原因でした）
-      const routeInfo = routesData.data?.find(r => String(r.route_id) === String(trip?.route_id));
+      // 必要なマスターデータをすべて取得
+      const [res, trips, users, routesData, stopTimes] = await Promise.all([
+        supabase.from('予約').select('*').order('reservation_id', { ascending: false }),
+        supabase.from('便').select('trip_id, operation_date, route_id, departure_time'),
+        supabase.from('ユーザ').select('id, name'),
+        supabase.from('バス路線').select('route_id, route_name'),
+        supabase.from('路線停留所').select('route_id, stop_id, stop_time, stop_time_2, stop_time_3, stop_time_4')
+      ]);
 
-      return {
-        ...reservation,
-        id: reservation.reservation_id,
-        displayCount: reservation.reserved_count || 0,
-        便: trip || { operation_date: "不明", route_id: "-" },
-        // RLSが修正されれば user.name が表示されます
-        利用者: { name: user ? user.name : `不明 (ID: ${reservation.user_id})` },
-        routeName: routeInfo ? routeInfo.route_name : "不明"
-      };
-    });
+      if (res.error) throw res.error;
 
-    const sortedData = joinedData.sort((a, b) => {
-      const dateA = a.便?.operation_date || "";
-      const dateB = b.便?.operation_date || "";
-      return dateA.localeCompare(dateB);
-    });
+      // データ結合と時間計算
+      const joinedData = (res.data || []).map((reservation: any) => {
+        const trip = trips.data?.find(t => String(t.trip_id) === String(reservation.trip_id));
+        const user = users.data?.find(u => String(u.id) === String(reservation.user_id));
+        const routeInfo = routesData.data?.find(r => String(r.route_id) === String(trip?.route_id));
+        
+        // --- 乗車時刻(actual_time)の算出ロジック ---
+        let actualTime = "00:00";
+        if (trip?.departure_time && trip?.route_id) {
+          const st = stopTimes.data?.find(s => 
+            String(s.route_id) === String(trip.route_id) && 
+            String(s.stop_id) === String(reservation.boarding_id)
+          );
 
-    setAllReservations(sortedData);
+          if (st) {
+            const hour = parseInt(trip.departure_time.split(":")[0], 10);
+            const minute = parseInt(trip.departure_time.split(":")[1], 10);
+            const totalMin = hour * 60 + minute;
 
-    const todayStr = new Date().toLocaleDateString('sv-SE');
-    const initialDisplay = sortedData.filter(res => {
-      const opDate = res.便?.operation_date?.replace(/\//g, '-');
-      return opDate === todayStr && (res.status === "active" || res.status === "cancel");
-    });
-    setDisplayReservations(initialDisplay);
+            if (totalMin >= 360 && totalMin < 660) actualTime = st.stop_time;
+            else if (totalMin >= 660 && totalMin < 840) actualTime = st.stop_time_2;
+            else if (totalMin >= 840 && totalMin < 1062) actualTime = st.stop_time_3;
+            else actualTime = st.stop_time_4;
+          } else {
+            actualTime = trip.departure_time; // 停留所時刻がない場合は便の出発時間
+          }
+        }
 
-  } catch (error) {
-    console.error("データ取得失敗:", error);
-  } finally {
-    setLoading(false);
+        return {
+          ...reservation,
+          id: reservation.reservation_id,
+          便: trip || { operation_date: "9999/12/31", departure_time: "00:00" },
+          利用者: { name: user ? user.name : `不明 (ID: ${reservation.user_id})` },
+          routeName: routeInfo ? routeInfo.route_name : "不明",
+          displayCount: reservation.reserved_count || 0,
+          actual_time: actualTime || "00:00" // ソート用
+        };
+      });
+
+      // 精密ソート: 日付(昇順) -> 時刻(昇順)
+      const sortedData = joinedData.sort((a, b) => {
+        const dateA = a.便?.operation_date || "";
+        const dateB = b.便?.operation_date || "";
+        const dateCompare = dateA.localeCompare(dateB);
+
+        if (dateCompare === 0) {
+          return (a.actual_time || "00:00").localeCompare(b.actual_time || "00:00");
+        }
+        return dateCompare;
+      });
+
+      setAllReservations(sortedData);
+
+      // 初回表示（今日の日付でフィルタ）
+      const todayStr = new Date().toLocaleDateString('sv-SE');
+      const initialDisplay = sortedData.filter(res => {
+        const opDate = res.便?.operation_date?.replace(/\//g, '-');
+        return opDate === todayStr && (res.status === "active" || res.status === "cancelled");
+      });
+      setDisplayReservations(initialDisplay);
+
+    } catch (error) {
+      console.error("データ取得失敗:", error);
+    } finally {
+      setLoading(false);
+    }
   }
-}
+
   useEffect(() => {
     fetchReservations();
   }, []);
 
-  // --- 検索・絞り込みロジック ---
-const handleSearch = () => {
-  let filtered = allReservations;
-
-  // 1. 日付範囲
-  if (startDate || endDate) {
-    filtered = filtered.filter(res => {
-      const opDate = res.便?.operation_date?.replace(/\//g, '-');
-      if (!opDate) return false;
-      return (!startDate || opDate >= startDate) && (!endDate || opDate <= endDate);
-    });
-  }
-
-  // 2. ステータス (active / cancel / all)
-  if (status === "all") {
-    filtered = filtered.filter(res => res.status === "active" || res.status === "cancel");
-  } else {
-    filtered = filtered.filter(res => res.status === status);
-  }
-
-  // 3. 路線名
-  if (route !== "すべての路線") {
-    filtered = filtered.filter(res => res.routeName === route);
-  }
-
-  setDisplayReservations(filtered);
-};
-
-    const handleReset = () => {
-      // 1. 今日の日付を取得 (YYYY-MM-DD形式)
-      const today = new Date().toLocaleDateString('sv-SE');
-
-      // 2. 入力項目の状態（State）を初期値に戻す
-      setStartDate(today);
-      setEndDate(today);
-      setStatus("all");
-      setRoute("すべての路線");
-
-      // 3. 表示データを「今日」かつ「確定・キャンセル」で絞り込む
-      const initialDisplay = allReservations.filter(res => {
+  const handleSearch = () => {
+    let filtered = allReservations;
+    if (startDate || endDate) {
+      filtered = filtered.filter(res => {
         const opDate = res.便?.operation_date?.replace(/\//g, '-');
-        const isToday = opDate === today;
-        const isTargetStatus = res.status === "active" || res.status === "cancel";
-        return isToday && isTargetStatus;
+        if (!opDate) return false;
+        return (!startDate || opDate >= startDate) && (!endDate || opDate <= endDate);
       });
+    }
 
-      setDisplayReservations(initialDisplay);
-    };  
+    if (status === "all") {
+      filtered = filtered.filter(res => res.status === "active" || res.status === "cancelled");
+    } else {
+      filtered = filtered.filter(res => res.status === status);
+    }
+
+    setDisplayReservations(filtered);
+  };
+
+  const handleReset = () => {
+    const today = new Date().toLocaleDateString('sv-SE');
+    setStartDate(today);
+    setEndDate(today);
+    setStatus("all");
+    const initial = allReservations.filter(res => {
+        const opDate = res.便?.operation_date?.replace(/\//g, '-');
+        return opDate === today && (res.status === "active" || res.status === "cancelled");
+    });
+    setDisplayReservations(initial);
+  };
 
   return (
     <div className="bg-green-700 rounded-3xl p-3 sm:p-8">
       <div className="bg-white rounded-3xl p-3 sm:p-8">
         <div className="flex flex-col md:flex-row">
-          {/* Left Sidebar */}
           <aside className="w-full md:w-64 md:pr-8 mb-4 md:mb-0">
             <div className="space-y-4 flex flex-row md:flex-col gap-2 md:gap-0">
               <button onClick={() => onNavigate("reservations")} className="w-full bg-white text-black py-4 md:py-6 rounded-2xl border-4 border-green-700 text-center">
@@ -156,130 +156,75 @@ const handleSearch = () => {
             </div>
           </aside>
 
-          {/* Main Content */}
-          <div className="flex-1 max-h-[600px] overflow-y-auto">
-            <h2 className="text-2xl sm:text-3xl mb-4 sm:mb-6 font-bold">予約管理</h2>
+          <div className="flex-1">
+            <h2 className="text-2xl sm:text-3xl mb-4 font-bold">予約管理</h2>
 
-            {/* Search Section */}
-            <div className="mb-6 sm:mb-8 bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
-              <h3 className="text-lg mb-3">・検索絞り込み</h3>
+            {/* 検索セクション */}
+            <div className="mb-6 bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
               <div className="space-y-4">
-                {/* Date Range Section */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
-                  <input
-                    type="date" // text から date に変更
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="border-4 border-black rounded-lg px-3 sm:px-4 py-2 w-full sm:w-64 text-sm sm:text-base cursor-pointer"
-                  />
-                  <span className="text-center sm:text-left font-bold">～</span>
-                  <input
-                    type="date" // text から date に変更
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="border-4 border-black rounded-lg px-3 sm:px-4 py-2 w-full sm:w-64 text-sm sm:text-base cursor-pointer"
-                  />
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border-2 border-black rounded-lg px-4 py-2 w-full sm:w-auto font-bold"/>
+                  <span className="font-bold">～</span>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border-2 border-black rounded-lg px-4 py-2 w-full sm:w-auto font-bold"/>
                 </div>
-
-                {/* Status & Search Button */}
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <span className="bg-green-700 text-white px-4 py-2 rounded-lg w-full sm:w-32 text-center">状態</span>
-                  <select 
-                    value={status} 
-                    onChange={(e) => setStatus(e.target.value)} 
-                    className="border-4 border-black rounded-lg px-3 py-2 flex-1"
-                  >
-                    {/* 見た目は日本語、プログラムに渡す値は英語にする */}
+                  <select value={status} onChange={(e) => setStatus(e.target.value)} className="border-2 border-black rounded-lg px-3 py-2 flex-1 font-bold">
                     <option value="all">すべて（確定・キャンセル）</option>
                     <option value="active">確定</option>
-                    <option value="cancel">キャンセル</option>
+                    <option value="cancelled">キャンセル</option>
                   </select>
-                  <button onClick={handleSearch} className="bg-green-700 text-white px-8 py-2 rounded-lg hover:opacity-90 transition-opacity">検索実行</button>
-                  <button onClick={handleReset} // ★ここを handleReset に変更
-                    className="bg-white border-2 border-black px-6 sm:px-8 py-2 rounded-lg flex-1 sm:flex-none text-sm sm:text-base font-bold hover:bg-gray-100">
-                    リセット</button>
+                  <button onClick={handleSearch} className="bg-green-700 text-white px-8 py-2 rounded-lg font-bold hover:bg-green-800">検索実行</button>
+                  <button onClick={handleReset} className="border-2 border-black px-8 py-2 rounded-lg font-bold hover:bg-gray-100">リセット</button>
                 </div>
               </div>
             </div>
 
-            {/* Reservations List */}
             {loading ? (
-              <div className="text-center py-10">読み込み中...</div>
+              <div className="text-center py-10 font-bold">読み込み中...</div>
             ) : (
-              <div className="border-4 border-black rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[700px]">
-                    <thead className="bg-green-700 text-white">
-                      <tr>
-                        <th className="py-4 px-4 border-r-4 border-black">ステータス</th>
-                        <th className="py-4 px-4 border-r-4 border-black">乗車日</th>
-                        <th className="py-4 px-4 border-r-4 border-black">路線</th>
-                        <th className="py-4 px-4 border-r-4 border-black">予約者</th>
-                        <th className="py-4 px-4 border-r-4 border-black">人数</th>
-                        <th className="py-4 px-4">操作</th>
+              <div className="border-4 border-black rounded-2xl overflow-hidden overflow-x-auto">
+                <table className="w-full min-w-[700px] border-collapse">
+                  <thead className="bg-green-700 text-white">
+                    <tr className="border-b-2 border-black">
+                      <th className="py-4 px-4 border-r-2 border-black">ステータス</th>
+                      <th className="py-4 px-4 border-r-2 border-black">乗車時刻</th>
+                      <th className="py-4 px-4 border-r-2 border-black">路線</th>
+                      <th className="py-4 px-4 border-r-2 border-black">予約者</th>
+                      <th className="py-4 px-4 border-r-2 border-black">人数</th>
+                      <th className="py-4 px-4">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    {displayReservations.map((reservation) => (
+                      <tr key={reservation.id} className={`border-t-2 border-black hover:bg-gray-50 text-center ${reservation.status === 'cancelled' ? 'bg-gray-100' : ''}`}>
+                        <td className={`py-4 px-4 font-bold border-r-2 border-black ${reservation.status === "active" ? "text-green-600" : "text-red-600"}`}>
+                          {reservation.status === "active" ? "確定" : "キャンセル済み"}
+                        </td>
+                        <td className="py-4 px-4 border-r-2 border-black">
+                           <div className="font-bold">{reservation.便?.operation_date}</div>
+                           <div className="text-sm text-green-700 font-bold">{reservation.actual_time}</div>
+                        </td>
+                        <td className="py-4 px-4 font-bold border-r-2 border-black">{reservation.routeName}</td>
+                        <td className="py-4 px-4 border-r-2 border-black">{reservation.利用者?.name}様</td>
+                        <td className="py-4 px-4 font-bold text-cyan-600 border-r-2 border-black">{reservation.displayCount}名</td>
+                        <td className="py-4 px-4 space-x-3">
+                          <button onClick={() => { setSelectedReservation(reservation); setIsModalOpen(true); }} className="text-blue-600 underline font-bold">詳細</button>
+                          {reservation.status === "active" && (
+                            <button onClick={() => setEditReservation(reservation)} className="text-red-600 underline font-bold">編集</button>
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="bg-white">
-                      {displayReservations.map((reservation) => (
-                         <tr key={reservation.id} className="border-t-4 border-black hover:bg-gray-50">
-                          {/* ステータス列（前回の修正通り） */}
-                          <td className={`py-4 px-4 text-center border-r-4 border-black font-bold ${
-                            reservation.status === "active" ? "text-green-600" : "text-red-600"
-                          }`}>
-                            {reservation.status === "active" ? "確定" : "キャンセル"}
-                          </td>
-
-                          {/* 運行日 */}
-                          <td className="py-4 px-4 text-center border-r-4 border-black">
-                            {reservation.便?.operation_date || "不明"}
-                          </td>
-
-                          {/* 路線名 */}
-                          <td className="py-4 px-4 text-center border-r-4 border-black font-bold">
-                            {reservation.routeName}
-                          </td>
-
-                          {/* 利用者名 */}
-                          <td className="py-4 px-4 text-center border-r-4 border-black">
-                            {reservation.利用者?.name}様
-                          </td>
-
-                          {/* 人数（reserved_count） */}
-                          <td className="py-4 px-4 text-center border-r-4 border-black text-cyan-600 font-bold">
-                            {reservation.displayCount}名
-                          </td>
-
-                          {/* 操作ボタン */}
-                          <td className="py-4 px-4 text-center">
-                            <button onClick={() => setSelectedReservation(reservation)} className="text-blue-500 mr-4 font-bold">詳細</button>
-                            <button onClick={() => setEditReservation(reservation)} className="text-red-600 font-bold">編集</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* モダル類 */}
-      {selectedReservation && (
-        <ReservationDetailModal
-          isOpen={!!selectedReservation}
-          onClose={() => setSelectedReservation(null)}
-          reservation={selectedReservation}
-        />
-      )}
-      {editReservation && (
-        <ReservationEditModal
-          isOpen={!!editReservation}
-          onClose={() => setEditReservation(null)}
-          reservation={editReservation}
-        />
-      )}
+      <ReservationDetailModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} reservation={selectedReservation} onUpdate={fetchReservations} />
+      {editReservation && <ReservationEditModal isOpen={!!editReservation} onClose={() => setEditReservation(null)} reservation={editReservation} />}
     </div>
   );
 }

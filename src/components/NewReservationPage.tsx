@@ -34,7 +34,7 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
   const [representativeName, setRepresentativeName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [notes, setNotes] = useState("");
-  //console.log("現在のrideDateの状態:", rideDate);
+  //  console.log("現在のrideDateの状態:", rideDate);
 
   const totalCount = adults + children;
   const selectedTrip = trips.find(t => t.trip_id === selectedTripId);
