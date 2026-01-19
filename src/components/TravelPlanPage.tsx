@@ -5,10 +5,6 @@ import { ChevronDown } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { supabase } from './supabaseClient';
 
-interface TravelPlanPageProps {
-  onShowItinerary?: () => void;
-}
-
 type Spot = {
   spot_id: number;
   name: string;
@@ -23,7 +19,13 @@ type Spot = {
   distance: number | null;
 };
 
-export function TravelPlanPage({ onShowItinerary }: TravelPlanPageProps) {
+// 🔸 常に候補として追加したい観光地
+const EXTRA_SPOT_NAMES = [
+  '鏡野公園',
+  '香美市立やなせたかし記念館 アンパンマンミュージアム',
+];
+
+export function TravelPlanPage() {
   const [destination, setDestination] = useState('');
   const [spots, setSpots] = useState<Spot[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -42,7 +44,8 @@ export function TravelPlanPage({ onShowItinerary }: TravelPlanPageProps) {
     setShowResults(false);
 
     try {
-      const { data, error } = await supabase
+      // ① 入力された目的地で検索
+      const { data: searchData, error: searchError } = await supabase
         .from('観光地')
         .select(`
           spot_id,
@@ -59,9 +62,36 @@ export function TravelPlanPage({ onShowItinerary }: TravelPlanPageProps) {
         `)
         .ilike('name', `%${destination}%`);
 
-      if (error) throw error;
+      if (searchError) throw searchError;
 
-      setSpots(data ?? []);
+      // ② 固定で追加したい観光地を取得
+      const { data: extraData, error: extraError } = await supabase
+        .from('観光地')
+        .select(`
+          spot_id,
+          name,
+          description,
+          business_hours,
+          regular_holiday,
+          parking,
+          fee,
+          contact_info,
+          img_pass,
+          address,
+          distance
+        `)
+        .in('name', EXTRA_SPOT_NAMES);
+
+      if (extraError) throw extraError;
+
+      // ③ マージして重複排除
+      const merged = [...(searchData ?? []), ...(extraData ?? [])];
+
+      const uniqueSpots = Array.from(
+        new Map(merged.map((spot) => [spot.spot_id, spot])).values()
+      );
+
+      setSpots(uniqueSpots);
       setShowResults(true);
     } catch (err: any) {
       console.error(err);
@@ -142,7 +172,6 @@ export function TravelPlanPage({ onShowItinerary }: TravelPlanPageProps) {
 
             {spots.map((spot, index) => (
               <div key={spot.spot_id} className="mb-6">
-                {/* ヘッダー */}
                 <div className="flex items-center mb-3">
                   <div className="bg-cyan-400 text-white px-4 py-2 rounded">
                     候補地{index + 1}
@@ -150,7 +179,6 @@ export function TravelPlanPage({ onShowItinerary }: TravelPlanPageProps) {
                   <div className="ml-3 text-lg">{spot.name}</div>
                 </div>
 
-                {/* 本文 */}
                 <div className="bg-white">
                   <p className="text-sm mb-4">
                     {spot.description ?? '説明はありません'}
@@ -174,26 +202,14 @@ export function TravelPlanPage({ onShowItinerary }: TravelPlanPageProps) {
                     <li>料金：{spot.fee ?? '不明'}</li>
                     <li>連絡先：{spot.contact_info ?? '不明'}</li>
                   </ul>
-
-                  <div className="flex justify-end">
-                    <button className="bg-green-500 text-white px-6 py-2 rounded-lg">
-                      この場所を追加する
-                    </button>
-                  </div>
                 </div>
               </div>
             ))}
 
-            {/* 下部ボタン */}
+            {/* 下部ボタン（MAPのみ） */}
             <div className="flex flex-col gap-3 mt-6">
               <button className="bg-green-500 text-white px-8 py-4 rounded-lg">
                 MAPで経路を確認する
-              </button>
-              <button
-                className="bg-green-500 text-white px-8 py-4 rounded-lg"
-                onClick={onShowItinerary}
-              >
-                旅程表を確認する
               </button>
             </div>
           </>

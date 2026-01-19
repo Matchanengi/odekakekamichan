@@ -8,6 +8,8 @@ import { supabase } from './supabaseClient';
 interface Spot {
   spot_id: number;
   name: string;
+  hurigana: string;
+  distance: number | null;
   description: string;
   images: string[];
   details: {
@@ -19,11 +21,15 @@ interface Spot {
   };
 }
 
-type SortOrder = 'asc' | 'desc';
+type NameSortOrder = 'asc' | 'desc';
+type DistanceSortOrder = 'near' | 'far';
 
 export function SightseeingPage() {
   const [spots, setSpots] = useState<Spot[]>([]);
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [nameSortOrder, setNameSortOrder] = useState<NameSortOrder>('asc');
+  const [distanceSortOrder, setDistanceSortOrder] =
+    useState<DistanceSortOrder>('near');
+  const [activeSort, setActiveSort] = useState<'name' | 'distance'>('name');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +43,8 @@ export function SightseeingPage() {
         .select(`
           spot_id,
           name,
+          hurigana,
+          distance,
           description,
           img_pass,
           business_hours,
@@ -56,6 +64,8 @@ export function SightseeingPage() {
         data?.map((item: any) => ({
           spot_id: item.spot_id,
           name: item.name,
+          hurigana: item.hurigana ?? '',
+          distance: item.distance ?? null,
           description: item.description ?? '',
           images: Array.isArray(item.img_pass)
             ? item.img_pass
@@ -78,14 +88,31 @@ export function SightseeingPage() {
     fetchSpots();
   }, []);
 
-  const sortedSpots = [...spots].sort((a, b) =>
-    sortOrder === 'asc'
-      ? a.name.localeCompare(b.name, 'ja')
-      : b.name.localeCompare(a.name, 'ja')
-  );
+  // 🔽 並び替え処理
+  const sortedSpots = [...spots].sort((a, b) => {
+    if (activeSort === 'name') {
+      return nameSortOrder === 'asc'
+        ? a.hurigana.localeCompare(b.hurigana, 'ja')
+        : b.hurigana.localeCompare(a.hurigana, 'ja');
+    }
 
-  const toggleSortOrder = () => {
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    // distance が null の場合は最後に回す
+    const distA = a.distance ?? Number.MAX_SAFE_INTEGER;
+    const distB = b.distance ?? Number.MAX_SAFE_INTEGER;
+
+    return distanceSortOrder === 'near'
+      ? distA - distB
+      : distB - distA;
+  });
+
+  const toggleNameSort = () => {
+    setActiveSort('name');
+    setNameSortOrder(nameSortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  const toggleDistanceSort = () => {
+    setActiveSort('distance');
+    setDistanceSortOrder(distanceSortOrder === 'near' ? 'far' : 'near');
   };
 
   if (loading) {
@@ -103,13 +130,22 @@ export function SightseeingPage() {
           観光地一覧
         </h2>
 
-        <div className="flex justify-end mb-6">
+        {/* 並び替えボタン */}
+        <div className="flex flex-wrap justify-end gap-4 mb-6">
           <button
-            onClick={toggleSortOrder}
+            onClick={toggleNameSort}
             className="bg-cyan-400 text-white px-6 py-3 rounded-lg hover:bg-cyan-500 transition-colors flex items-center gap-2"
           >
             <ArrowUpDown size={20} />
-            観光地名順（{sortOrder === 'asc' ? '昇順' : '降順'}）
+            観光地名順（{nameSortOrder === 'asc' ? '昇順' : '降順'}）
+          </button>
+
+          <button
+            onClick={toggleDistanceSort}
+            className="bg-cyan-400 text-white px-6 py-3 rounded-lg hover:bg-cyan-500 transition-colors flex items-center gap-2"
+          >
+            <ArrowUpDown size={20} />
+            距離順（{distanceSortOrder === 'near' ? '近い' : '遠い'}）
           </button>
         </div>
 
@@ -133,7 +169,6 @@ export function SightseeingPage() {
                   {spot.description}
                 </p>
 
-                {/* 画像（詳細テーブルと同じ横幅） */}
                 {spot.images.length > 0 && (
                   <div className="grid grid-cols-1 gap-4 mb-6">
                     {spot.images.map((img, i) => (
@@ -151,7 +186,6 @@ export function SightseeingPage() {
                   </div>
                 )}
 
-                {/* 詳細テーブル */}
                 <div className="border-2 border-cyan-400 rounded-lg overflow-hidden">
                   {[
                     ['営業時間', spot.details.hours],
