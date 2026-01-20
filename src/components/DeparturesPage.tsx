@@ -129,7 +129,6 @@ async function fetchDepartures() {
                 <th className="border-r-4 border-black py-3 sm:py-4 px-3 sm:px-6">路線名</th>
                 <th className="border-r-4 border-black py-3 sm:py-4 px-3 sm:px-6">乗車時間</th>
                 <th className="border-r-4 border-black py-3 sm:py-4 px-3 sm:px-6">予約/定員</th>
-                <th className="py-3 sm:py-4 px-3 sm:px-6">乗客リスト</th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -147,15 +146,7 @@ async function fetchDepartures() {
                         {departure.reserved}
                       </span>
                       {' / '}{departure.capacity} 人
-                    </td>
-                    <td className="py-3 sm:py-4 px-3 sm:px-6 text-center">
-                      <button
-                        className="text-red-600 hover:text-red-800 cursor-pointer underline font-bold"
-                        onClick={() => handlePrintPassengerList(departure.id)}
-                      >
-                        印刷
-                      </button>
-                    </td>
+                    </td>x
                   </tr>
                 ))
               ) : (
