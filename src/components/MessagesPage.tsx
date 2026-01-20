@@ -23,7 +23,6 @@ interface MessageItem {
 }
 
 export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; isAdmin?: boolean }) {
-  // ★ role（役割）も取得するように追加
   const { profile, role } = useAuth();
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,7 +42,6 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
 
   useEffect(() => {
     const fetchMessages = async () => {
-      // プロフィールがない場合は何もしない
       if (!profile) {
         setIsLoading(false);
         return;
@@ -53,7 +51,6 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
       const allItems: MessageItem[] = [];
 
       try {
-        // --- 1. お知らせ取得（これは管理者・ユーザー共通） ---
         const { data: notices } = await supabase
           .from("お知らせ_view")
           .select("*")
@@ -73,9 +70,7 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
           });
         }
 
-        // --- 2. 一般ユーザーの場合のみ「予約」と「登録」の情報を取得 ---
         if (role === 'user') {
-          // 予約情報取得
           const { data: reservations } = await supabase
             .from("予約")
             .select(`
@@ -84,7 +79,7 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
               alighting:alighting_id(stop_name),
               trip:trip_id(operation_date, departure_time, fare)
             `)
-            .eq('user_id', profile.id); // 一般ユーザーなら必ず id がある
+            .eq('user_id', profile.id);
 
           if (reservations) {
             reservations.forEach((r: any) => {
@@ -110,7 +105,6 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
             });
           }
 
-          // 会員登録完了メッセージ
           if (profile.create) {
             allItems.push({
               id: 'system-welcome',
@@ -123,7 +117,6 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
             });
           }
         } else if (role === 'admin') {
-           // --- 管理者の場合の追加メッセージがあればここに書く（任意） ---
            allItems.push({
              id: 'admin-msg',
              type: 'system',
@@ -144,7 +137,7 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
       }
     };
     fetchMessages();
-  }, [profile, role]); // role が変わったときも再実行
+  }, [profile, role]);
 
   return (
     <div className={`${bgColor} rounded-3xl p-3 sm:p-8 min-h-[600px] relative transition-colors duration-500`}>
@@ -187,24 +180,29 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
         <button onClick={onBack} className="mt-10 bg-gray-800 text-white px-10 py-3 rounded-xl font-bold shadow-md hover:bg-black transition-all">戻る</button>
       </div>
 
-      {/* 詳細モーダル（変更なし） */}
+      {/* --- 改善版モーダル --- */}
       {selectedMsg && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="relative bg-white border-4 border-black rounded-[2.5rem] w-full max-w-lg shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden animate-in zoom-in duration-200">
-            <div className={`p-5 border-b-4 border-black flex justify-between items-center ${selectedMsg.isImportant ? 'bg-yellow-400' : 'bg-blue-600 text-white'}`}>
+          {/* max-h-[85vh] で画面の85%を最大高さに設定し、flex-col でレイアウトを制御 */}
+          <div className="relative bg-white border-4 border-black rounded-[2.5rem] w-full max-w-lg shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] overflow-hidden animate-in zoom-in duration-200 flex flex-col max-h-[85vh]">
+            
+            {/* ヘッダー：固定 */}
+            <div className={`p-5 border-b-4 border-black flex justify-between items-center shrink-0 ${selectedMsg.isImportant ? 'bg-yellow-400' : 'bg-blue-600 text-white'}`}>
               <h3 className="font-black text-xl tracking-tighter">MESSAGE DETAIL</h3>
               <button onClick={() => setSelectedMsg(null)} className="p-2 hover:bg-black/10 rounded-full"><X size={28} strokeWidth={3} /></button>
             </div>
-            <div className="p-6 sm:p-8">
+
+            {/* コンテンツエリア：内部スクロール有効 */}
+            <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar">
               {selectedMsg.reservationDetails ? (
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
-                    <span className="bg-cyan-400 text-white px-4 py-1 rounded-lg font-bold text-sm">乗車</span>
+                    <span className="bg-cyan-400 text-white px-4 py-1 rounded-lg font-bold text-sm shrink-0">乗車</span>
                     <div className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-lg font-bold bg-gray-50">{selectedMsg.reservationDetails.boardingName}</div>
                   </div>
                   <div className="flex justify-center"><ArrowDown className="text-cyan-400" /></div>
                   <div className="flex items-center gap-4">
-                    <span className="bg-cyan-400 text-white px-4 py-1 rounded-lg font-bold text-sm">降車地</span>
+                    <span className="bg-cyan-400 text-white px-4 py-1 rounded-lg font-bold text-sm shrink-0">降車地</span>
                     <div className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-lg font-bold bg-gray-50">{selectedMsg.reservationDetails.alightingName}</div>
                   </div>
                   <div className="bg-gray-100 rounded-2xl p-4 space-y-4">
@@ -217,7 +215,7 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
                   </div>
                   <div className="space-y-2">
                     <p className="text-gray-500 text-sm font-bold">人数</p>
-                    <div className="flex gap-6">
+                    <div className="flex flex-wrap gap-4 sm:gap-6">
                       <div className="flex items-center gap-2">おとな <span className="border-2 border-gray-200 rounded-lg px-4 py-1 font-bold">{selectedMsg.reservationDetails.adults}人</span></div>
                       <div className="flex items-center gap-2">こども <span className="border-2 border-gray-200 rounded-lg px-4 py-1 font-bold">{selectedMsg.reservationDetails.children}人</span></div>
                     </div>
@@ -232,7 +230,13 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
                   {selectedMsg.content}
                 </div>
               )}
-              <button onClick={() => setSelectedMsg(null)} className="w-full mt-8 bg-gray-900 text-white py-4 rounded-2xl font-black transition-colors hover:bg-black">閉じる</button>
+            </div>
+
+            {/* フッター（閉じるボタン）：スクロールに関わらず最下部に固定 */}
+            <div className="p-6 pt-0 shrink-0">
+              <button onClick={() => setSelectedMsg(null)} className="w-full bg-gray-900 text-white py-4 rounded-2xl font-black transition-colors hover:bg-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                閉じる
+              </button>
             </div>
           </div>
         </div>
