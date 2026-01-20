@@ -9,7 +9,9 @@ interface BookingConfirmPageProps {
   bookingData: {
     line?: string;
     tripId: number;
+    direction: boolean;
     returnTripId: number;
+    returnDirection?: boolean;
     departure: string;
     arrival: string;
     tripType: '片道' | '往復';
@@ -35,7 +37,7 @@ export function BookingConfirmPage({ onBack, onConfirm, userId, bookingData }: B
     try {
       // 0. 停留所名から ID を取得する
       const stopNames = [bookingData.departure, bookingData.arrival];
-    
+
       const { data: stops, error: stopError } = await supabase
         .from('停留所')
         .select('stop_id, stop_name')
@@ -63,6 +65,7 @@ export function BookingConfirmPage({ onBack, onConfirm, userId, bookingData }: B
         trip_id: Number(bookingData.tripId), // 便ID
         boarding_id: Number(boardingId), // 乗車停留所ID
         alighting_id: Number(alightingId), // 降車停留所ID
+        direction: bookingData.direction ? 1 : 0,
         adult_count: Number(bookingData.adults),
         child_count: Number(bookingData.children),
         reserved_count: Number(bookingData.adults) + Number(bookingData.children), // 合計人数
@@ -76,6 +79,7 @@ export function BookingConfirmPage({ onBack, onConfirm, userId, bookingData }: B
           trip_id: Number(bookingData.returnTripId), // 帰りの便ID
           boarding_id: Number(alightingId), // 帰りは出発地と目的地が逆
           alighting_id: Number(boardingId),
+          direction: bookingData.returnDirection ? 1 : 0,
           adult_count: Number(bookingData.adults),
           child_count: Number(bookingData.children),
           reserved_count: Number(bookingData.adults) + Number(bookingData.children),
@@ -92,7 +96,7 @@ export function BookingConfirmPage({ onBack, onConfirm, userId, bookingData }: B
 
       // 3. 成功したら親コンポーネントの遷移処理を呼ぶ
       onConfirm();
-      
+
     } catch (error: any) {
       console.error('予約保存エラー:', error);
       alert('予約の保存に失敗しました。');
@@ -122,7 +126,7 @@ export function BookingConfirmPage({ onBack, onConfirm, userId, bookingData }: B
                   {bookingData.departure}
                 </div>
               </div>
-              
+
               <div className="flex justify-center">
                 <div className="text-cyan-400 text-3xl">↓</div>
               </div>
@@ -139,21 +143,19 @@ export function BookingConfirmPage({ onBack, onConfirm, userId, bookingData }: B
 
             {/* 片道・往復 */}
             <div className="flex gap-2 mb-6">
-              <button 
-                className={`px-6 sm:px-8 py-2 rounded-lg text-sm sm:text-base ${
-                  bookingData.tripType === '片道' 
-                    ? 'bg-gray-300 text-black' 
+              <button
+                className={`px-6 sm:px-8 py-2 rounded-lg text-sm sm:text-base ${bookingData.tripType === '片道'
+                    ? 'bg-gray-300 text-black'
                     : 'bg-white border-2 border-gray-300 text-black'
-                }`}
+                  }`}
               >
                 片道
               </button>
-              <button 
-                className={`px-6 sm:px-8 py-2 rounded-lg text-sm sm:text-base ${
-                  bookingData.tripType === '往復' 
-                    ? 'bg-cyan-400 text-white' 
+              <button
+                className={`px-6 sm:px-8 py-2 rounded-lg text-sm sm:text-base ${bookingData.tripType === '往復'
+                    ? 'bg-cyan-400 text-white'
                     : 'bg-white border-2 border-gray-300 text-black'
-                }`}
+                  }`}
               >
                 往復
               </button>
@@ -217,7 +219,7 @@ export function BookingConfirmPage({ onBack, onConfirm, userId, bookingData }: B
                 </div>
               </div>
             </div>
-            
+
             {/* 料金合計 */}
             <div className="mb-8 border-t-2 border-gray-100 pt-6">
               <div className="flex justify-between items-center">

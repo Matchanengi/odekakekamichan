@@ -10,6 +10,7 @@ interface Bus {
   availableSeats: number;
   totalSeats: number;
   fare: number;
+  direction: boolean;
 }
 
 interface BusResultsPageProps {
@@ -42,9 +43,27 @@ interface BusResultsPageProps {
     adults: number;
     children: number;
     tripId: number;
+    direction: boolean;
     returnTripId?: number;
+    returnDirection?: boolean;
     fare: number;
   }) => void;
+}
+// Supabaseから返ってくるデータの構造を定義
+interface RouteWithStops {
+  route_id: number;
+  route_name: string;
+  路線停留所: {
+    stop_order: number;
+    direction: number;
+    stop_time: string | null;
+    stop_time_2: string | null;
+    stop_time_3: string | null;
+    stop_time_4: string | null;
+    停留所: {
+      stop_name: string;
+    } | null;
+  }[];
 }
 
 export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPageProps) {
@@ -61,134 +80,96 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
       setReturnBuses([]);
       setIsLoading(true);
       try {
+        // 
         const getBusData = async (date: string, lineName: string, depName: string, arrName: string, targetTime: string) => {
-          // 1. 「便」テーブルからその日の全データを取得
-          console.log(`BusResultPage:1. 便取得を試みます: 日付=${date}`);
-          
-          const { data: trips, error: tripError } = await supabase
-            .from('便')
-            .select('trip_id, fare, capacity, reserved_count, route_id, departure_time')
-            .eq('operation_date', date)
-            ;
-
-          if (tripError) {
-            console.error("BusResultPage:便取得エラー:", tripError);
-            throw tripError;
-          }
-          console.log(`BusResultPage:2. 便データを ${trips?.length || 0} 件取得しました`, trips);
-
-          // 2. 「バス路線」とそれに紐づく「路線停留所」を取得
-          console.log(`BusResultPage:3. バス路線取得を試みます: 路線名=${lineName}`);
-          const { data: routes, error: routeError } = await supabase
+          // 1. 路線と全停留所を取得（direction 0と1の両方）
+          const { data: rawRoutes, error: routeError } = await supabase
             .from('バス路線')
             .select(`
-              route_id,
-              route_name,
-              路線停留所 (
-                stop_order,
-                direction,
-                stop_time,
-                stop_time_2,
-                stop_time_3,
-                stop_time_4,
-                停留所 (
-                  stop_name
-                )
-              )
-            `)
+            route_id,
+            路線停留所 (
+              stop_order, direction, stop_time, stop_time_2, stop_time_3, stop_time_4,
+              停留所 ( stop_name )
+            )
+          `)
             .eq('route_name', lineName);
 
-          if (routeError) {
-            console.error("BusResultPage:路線取得エラー:", routeError);
-            throw routeError;
+          const routes = rawRoutes as unknown as RouteWithStops[];
+          if (routeError || !routes || routes.length === 0) return [];
+          const allStops = routes[0].路線停留所 || [];
+
+          // 「路線全体の本当の始発点」を特定（常にここをキーにする）
+          // 理由：便テーブルの departure_time は、この地点の時刻しか持っていないため
+          const absoluteMinOrder = Math.min(...allStops.map((s: any) => s.stop_order));
+          const routeOriginStop = allStops.find((s: any) => s.stop_order === absoluteMinOrder);
+
+          if (!routeOriginStop) {
+            console.warn("路線の始発停留所を特定できませんでした。");
+            return []; // 見つからない場合は空のリストを返して終了する
           }
-          console.log(`BusResultPage:4. 路線データを ${routes?.length || 0} 件取得しました`, routes);
+          // 3. 便データの取得
+          const { data: trips } = await supabase
+            .from('便')
+            .select('*')
+            .eq('operation_date', date)
+            .eq('route_id', routes[0].route_id);
 
-          
-          if (!trips || trips.length === 0 || !routes || routes.length === 0) {
-            console.warn("BusResultPage:便または路線が0件のため、照合をスキップします。");            
-            return [];
-          }
-          const route = routes[0] as any;
-          const stops = route.路線停留所 || [];
+          if (!trips) return [];
 
-          // 行きなら direction: 0、帰りなら direction: 1 のレコードを使う想定
-          const isReturnSearch = depName !== searchData.departure; // 出発地が検索条件と違う＝帰り
-          const currentDirectionStops = stops.filter((s: any) => s.direction === (isReturnSearch ? 1 : 0));
+          return trips.map(trip => {
+            // 4. 便の特定（常に全体の始発点 A の時刻と比較）
+            const tripStartT = trip.departure_time.split(':').slice(0, 2).join(':');
+            let timeKey: 'stop_time' | 'stop_time_2' | 'stop_time_3' | 'stop_time_4' | '' = '';
+            const checkMatch = (t: string | null) => t?.split(':').slice(0, 2).join(':') === tripStartT;
 
-          // 1. この路線に紐づく停留所の中で最小の stop_order を特定する
-          const stopOrders = currentDirectionStops.map((s: any) => s.stop_order);
-          const minOrder = Math.min(...stopOrders);
+            if (checkMatch(routeOriginStop.stop_time)) timeKey = 'stop_time';
+            else if (checkMatch(routeOriginStop.stop_time_2)) timeKey = 'stop_time_2';
+            else if (checkMatch(routeOriginStop.stop_time_3)) timeKey = 'stop_time_3';
+            else if (checkMatch(routeOriginStop.stop_time_4)) timeKey = 'stop_time_4';
 
-          // 2. その最小 order を持つ停留所を「始発」として特定
-          const firstStop = currentDirectionStops.find((s: any) => s.stop_order === minOrder);
-          if (!firstStop) {
-            console.log("❌ 該当路線の停留所が見つかりません");
-            return [];
-          }
+            if (!timeKey) return null;
 
-          // デバッグ用：どの番号を始発として認識したか出力
-          console.log(`✅ 始発判定: ${firstStop.停留所?.stop_name} (stop_order: ${minOrder})`);
+            // 5. ユーザーが探している「乗車駅」「降車駅」の組み合わせが
+            // direction: 0 か 1 どちらにあるか自動判定する
 
-          // 3. 取得したデータを結合してフィルタリング
-          console.log("実際にDBから届いた便データ:", trips);
-          return (trips || [])
-            .map(trip => {
-              // この便が「何番目のダイヤ」か判定するロジック
-              const tripStartT = trip.departure_time.split(':').slice(0, 2).join(':');
-              let timeKey = ''; 
-              // const tripStartT = trip.departure_time.slice(0, 5);
-              // let timeKey = 'stop_time'; // デフォルト
+            // まず direction: 0 で探してみる
+            let depStop = allStops.find(s => s.停留所?.stop_name === depName && s.direction === 0);
+            let arrStop = allStops.find(s => s.停留所?.stop_name === arrName && s.direction === 0);
+            let currentDirection = 0;
 
-              // 停留所マスタの各時刻列と比較
-              const checkMatch = (masterTime: string | null) => {
-                if (!masterTime) return false;
-                return masterTime.split(':').slice(0, 2).join(':') === tripStartT;
-              };
+            // direction: 0 に正しい順序（dep < arr）で存在しない場合、direction: 1 を探す
+            if (!(depStop && arrStop && depStop.stop_order < arrStop.stop_order)) {
+              depStop = allStops.find(s => s.停留所?.stop_name === depName && s.direction === 1);
+              arrStop = allStops.find(s => s.停留所?.stop_name === arrName && s.direction === 1);
+              currentDirection = 1;
+            }
+            // 6. 進行方向チェック（同じ direction 内で順番が正しいか）
+            if (depStop && arrStop && depStop.stop_order < arrStop.stop_order) {
+              const actualDepTime = depStop[timeKey]?.split(':').slice(0, 2).join(':');
+              const actualArrTime = arrStop[timeKey]?.split(':').slice(0, 2).join(':');
+              const searchLimit = targetTime.split(':').slice(0, 2).join(':');
 
-              if (checkMatch(firstStop.stop_time)) timeKey = 'stop_time';
-              else if (checkMatch(firstStop.stop_time_2)) timeKey = 'stop_time_2';
-              else if (checkMatch(firstStop.stop_time_3)) timeKey = 'stop_time_3';
-              else if (checkMatch(firstStop.stop_time_4)) timeKey = 'stop_time_4';
-              
-              if (!timeKey) {
-                console.warn(`便ID:${trip.trip_id} は路線の始発時刻(${tripStartT})と一致するダイヤがありません`);
-                return null;
+              // ユーザーの検索条件（B地点の通過時刻など）に合うか判定
+              if (actualDepTime && actualDepTime >= searchLimit) {
+                return {
+                  id: trip.trip_id,
+                  departureTime: actualDepTime, // B地点の通過時刻が入る
+                  arrivalTime: actualArrTime,   // A地点(戻り)の到着時刻が入る
+                  availableSeats: trip.capacity - (trip.reserved_count || 0),
+                  totalSeats: trip.capacity,
+                  fare: trip.fare,
+                  direction: currentDirection === 1
+                };
               }
-
-              const depStop = currentDirectionStops.find((s: any) => s.停留所?.stop_name === depName);
-              const arrStop = currentDirectionStops.find((s: any) => s.停留所?.stop_name === arrName);
-
-              if (depStop && arrStop && depStop.stop_order < arrStop.stop_order) {
-                console.log(`--- 便ID: ${trip.trip_id} の詳細解析 ---`);
-                console.log(`選択された timeKey: ${timeKey}`);
-                console.log(`降車停留所オブジェクト:`, arrStop);
-                console.log(`生データへのアクセス結果: arrStop['${timeKey}'] =`, arrStop[timeKey]);
-                const depTime = depStop[timeKey]?.split(':').slice(0, 2).join(':');
-                const arrTime = arrStop[timeKey]?.split(':').slice(0, 2).join(':');
-                console.log(`最終判定: 出発=${depTime}, 到着=${arrTime}`);
-                const searchTime = targetTime.split(':').slice(0, 2).join(':');
-
-                // ユーザーの検索希望時刻（targetTime）以降の便のみ表示
-                if (depTime && depTime >= searchTime) {
-                  return {
-                    id: trip.trip_id,
-                    departureTime: depTime,
-                    arrivalTime: arrTime,
-                    availableSeats: trip.capacity - (trip.reserved_count || 0),
-                    totalSeats: trip.capacity,
-                    fare: trip.fare
-                  };
-                }
-              }
-              return null;
-            })
+            }
+            return null;
+          })
             .filter((b): b is Bus => b !== null)
             .sort((a, b) => a.departureTime.localeCompare(b.departureTime));
         };
 
         // --- 実行（アラートを1回にまとめるため await で順番に処理） ---
-        
+
         // 行き
         const outboundResults = await getBusData(
           searchData.outboundDate,
@@ -228,8 +209,9 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
         date: searchData.outboundDate,
         time: selectedOutboundBus.departureTime,
         departureTime: selectedOutboundBus.departureTime,
-        arrivalTime: selectedOutboundBus.arrivalTime,        
+        arrivalTime: selectedOutboundBus.arrivalTime,
         tripId: selectedOutboundBus.id,
+        direction: selectedOutboundBus.direction,
         fare: selectedOutboundBus.fare
       });
     } else if (searchData.tripType === '往復' && selectedOutboundBus && selectedReturnBus) {
@@ -242,7 +224,9 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
         returnDepartureTime: selectedReturnBus.departureTime,
         returnArrivalTime: selectedReturnBus.arrivalTime,
         tripId: selectedOutboundBus.id,
+        direction: selectedOutboundBus.direction,
         returnTripId: selectedReturnBus.id,
+        returnDirection: selectedReturnBus.direction,
         fare: selectedOutboundBus.fare + selectedReturnBus.fare
       });
     }
@@ -278,7 +262,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
             ) : (
               <>
                 {/* 行きのリスト */}
-                <BusList 
+                <BusList
                   title={`行き (${searchData.outboundDate})`}
                   buses={outboundBuses}
                   selectedBusId={selectedOutboundBus?.id}
@@ -287,7 +271,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
 
                 {/* 帰りのリスト */}
                 {searchData.tripType === '往復' && (
-                  <BusList 
+                  <BusList
                     title={`帰り (${searchData.returnDate})`}
                     buses={returnBuses}
                     selectedBusId={selectedReturnBus?.id}
@@ -299,7 +283,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
 
             {/* アクションボタン */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-12">
-              <button 
+              <button
                 onClick={() => onBack(searchData)}
                 className="w-full sm:w-auto bg-gray-400 text-white px-12 py-3 rounded-xl"
               >
@@ -308,9 +292,8 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
               <button
                 onClick={handleConfirm}
                 disabled={isConfirmDisabled}
-                className={`w-full sm:w-auto px-12 py-3 rounded-xl ${
-                  isConfirmDisabled ? 'bg-gray-300' : 'bg-blue-600 text-white'
-                }`}
+                className={`w-full sm:w-auto px-12 py-3 rounded-xl ${isConfirmDisabled ? 'bg-gray-300' : 'bg-blue-600 text-white'
+                  }`}
               >
                 予約確認へ
               </button>
@@ -323,8 +306,8 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
 }
 
 // リスト表示用のサブコンポーネント（可読性向上のため）
-function BusList({ title, buses, selectedBusId, onSelect }: { 
-  title: string, buses: Bus[], selectedBusId?: number, onSelect: (bus: Bus) => void 
+function BusList({ title, buses, selectedBusId, onSelect }: {
+  title: string, buses: Bus[], selectedBusId?: number, onSelect: (bus: Bus) => void
 }) {
   return (
     <div className="mb-10">
@@ -337,9 +320,8 @@ function BusList({ title, buses, selectedBusId, onSelect }: {
             <button
               key={bus.id}
               onClick={() => onSelect(bus)}
-              className={`w-full p-4 rounded-xl border-2 transition-all ${
-                selectedBusId === bus.id ? 'border-cyan-400 bg-cyan-50' : 'border-gray-200 hover:border-cyan-200'
-              }`}
+              className={`w-full p-4 rounded-xl border-2 transition-all ${selectedBusId === bus.id ? 'border-cyan-400 bg-cyan-50' : 'border-gray-200 hover:border-cyan-200'
+                }`}
             >
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-6">

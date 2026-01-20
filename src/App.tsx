@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from './AuthContext'; 
+import { useAuth } from './AuthContext';
 import { Layout } from './components/Layout';
 import { TopPage } from './components/TopPage';
 import { ReservationManagementPage } from './components/ReservationManagementPage';
@@ -31,7 +31,7 @@ export type MainPage = 'top' | 'reservations' | 'new-reservation' | 'notificatio
 
 export default function App() {
   const { user, role, profile, signOut, loading: authLoading } = useAuth();
-  
+
   const isAdmin = role === 'admin';
 
   const [currentMainPage, setCurrentMainPage] = useState<MainPage>('top');
@@ -86,8 +86,8 @@ export default function App() {
   // --- 一般ユーザー・ゲストビュー ---
   return (
     <div>
-      <UserHeader 
-        currentPage={currentUserPage} 
+      <UserHeader
+        currentPage={currentUserPage}
         onPageChange={(page) => {
           if (page === 'login') setLoginMessage('');
           const registrationFlow: UserPage[] = ['register', 'register-confirm'];
@@ -100,11 +100,11 @@ export default function App() {
           setCurrentUserPage('login');
         }}
       />
-      
+
       <main>
         {currentUserPage === 'home' && <UserLandingPage onNavigate={setCurrentUserPage} />}
         {currentUserPage === 'login' && (
-          <LoginPage 
+          <LoginPage
             onLoginAsUser={handleLoginAsUser}
             onShowRegister={() => setCurrentUserPage('register')}
             onShowPasswordReset={() => setCurrentUserPage('password-reset')}
@@ -127,24 +127,37 @@ export default function App() {
         {currentUserPage === 'member' && user && (
           <MemberInfoPage onLogout={handleLogout} isAdmin={false} />
         )}
-        
+
         {/* ★バス予約：GitHub側の initialData 保持機能も統合して一本化 */}
         {currentUserPage === 'booking' && user && (
-          <UserBusBookingPage 
-            initialData={busSearchData} 
-            onShowRouteMap={() => setCurrentUserPage('route-map')} 
-            onShowBusResults={(data) => { setBusSearchData(data); setCurrentUserPage('bus-results'); }} 
+          <UserBusBookingPage
+            initialData={busSearchData}
+            onShowRouteMap={() => setCurrentUserPage('route-map')}
+            onShowBusResults={(data) => { setBusSearchData(data); setCurrentUserPage('bus-results'); }}
           />
         )}
 
         {/* 予約確認フロー */}
-        {currentUserPage === 'bus-results' && user && busSearchData && <BusResultsPage searchData={busSearchData} onBack={() => setCurrentUserPage('booking')} onConfirm={(data) => { setBookingData(data); setCurrentUserPage('booking-confirm'); }} />}
+        {currentUserPage === 'bus-results' && user && busSearchData && (
+          <BusResultsPage
+            searchData={busSearchData}
+            onBack={() => setCurrentUserPage('booking')}
+            onConfirm={(data) => {
+              setBookingData(data);
+              setCurrentUserPage('booking-confirm');
+            }}
+          />
+        )}
         {currentUserPage === 'booking-confirm' && user && bookingData && (
-        <BookingConfirmPage
-          userId={profile?.user_id || profile?.id} //profile から ID を渡す
-          bookingData={bookingData} 
-          onBack={() => setCurrentUserPage('bus-results')} 
-          onConfirm={() => setCurrentUserPage('booking-complete')} 
+          <BookingConfirmPage
+            userId={profile?.user_id || profile?.id} //profile から ID を渡す
+            bookingData={bookingData}
+            onBack={() => setCurrentUserPage('bus-results')}
+            onConfirm={() => {
+              setBookingData(null);
+              setBusSearchData(null);
+              setCurrentUserPage('booking-complete');
+            }}
           />
         )}
         {currentUserPage === 'booking-complete' && user && <BookingCompletePage onComplete={() => setCurrentUserPage('home')} />}

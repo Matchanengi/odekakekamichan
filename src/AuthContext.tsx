@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { supabase } from './components/supabaseClient'; 
+import { supabase } from './components/supabaseClient';
 import type { User, Session } from '@supabase/supabase-js';
 
 const logger = {
@@ -22,7 +22,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, profile: null, role: null, loading: true, signOut: async () => {},
+  user: null, session: null, profile: null, role: null, loading: true, signOut: async () => { },
 });
 
 const INACTIVITY_LIMIT = 1 * 60 * 1000; // 5分
@@ -96,7 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // 検知するイベントを増強
     const activityEvents = [
-      'mousedown', 'mousemove', 'keydown', 
+      'mousedown', 'mousemove', 'keydown',
       'scroll', 'touchstart', 'click'
     ];
 

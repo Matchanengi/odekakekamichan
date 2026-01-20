@@ -8,18 +8,18 @@ const minutes = ['00', '10', '20', '30', '40', '50'];
 interface UserBusBookingPageProps {
   onShowRouteMap?: () => void;
   onShowBusResults?: (searchData: //{
-     any
-  //   line: string;
-  //   departure: string;
-  //   arrival: string;
-  //   tripType: '片道' | '往復';
-  //   outboundDate: string;
-  //   outboundTime: string;
-  //   returnDate?: string;
-  //   returnTime?: string;
-  //   adults: number;
-  //   children: number;
-  // }
+    any
+    //   line: string;
+    //   departure: string;
+    //   arrival: string;
+    //   tripType: '片道' | '往復';
+    //   outboundDate: string;
+    //   outboundTime: string;
+    //   returnDate?: string;
+    //   returnTime?: string;
+    //   adults: number;
+    //   children: number;
+    // }
   ) => void;
   initialData?: any; // 戻り時のデータを受け取る
 }
@@ -37,30 +37,30 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
   const [selectedLine, setSelectedLine] = useState(initialData?.line || '町田線');
   const [departureLocation, setDepartureLocation] = useState(initialData?.departure || '');
   const [arrivalLocation, setArrivalLocation] = useState(initialData?.arrival || '');
-  
- // 出発情報（時刻は "HH:MM" 形式で来ると想定して split する）
+
+  // 出発情報（時刻は "HH:MM" 形式で来ると想定して split する）
   const initOutboundTime = initialData?.outboundTime?.split(':') || [currentHour, currentMinute];
-  const [outboundDate, setOutboundDate] = useState(initialData?.outboundDate?.slice(0,10) || today);
+  const [outboundDate, setOutboundDate] = useState(initialData?.outboundDate?.slice(0, 10) || today);
   const [outboundHour, setOutboundHour] = useState(initOutboundTime[0]);
   const [outboundMinute, setOutboundMinute] = useState(initOutboundTime[1]);
-  
+
   // 帰り情報
   const initReturnTime = initialData?.returnTime?.split(':') || [currentHour, currentMinute];
-  const [returnDate, setReturnDate] = useState(initialData?.returnDate?.slice(0,10) || today);
+  const [returnDate, setReturnDate] = useState(initialData?.returnDate?.slice(0, 10) || today);
   const [returnHour, setReturnHour] = useState(initReturnTime[0]);
   const [returnMinute, setReturnMinute] = useState(initReturnTime[1]);
-  
+
   const [adults, setAdults] = useState(initialData?.adults || 1);
   const [children, setChildren] = useState(initialData?.children || 0);
 
   const [busLines, setBusLines] = useState<string[]>([]);
-  const [availableStops, setAvailableStops] = useState<{id: any, name: string}[]>([]);
+  const [availableStops, setAvailableStops] = useState<{ id: any, name: string }[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 日時比較用のロジック
   const outboundFullDate = new Date(`${outboundDate}T${outboundHour}:${outboundMinute}`);
   const returnFullDate = new Date(`${returnDate}T${returnHour}:${returnMinute}`);
-  
+
   // 往復かつ、帰りが行きより前（または同時）であればエラー
   const isTimeError = tripType === 'round-trip' && returnFullDate < outboundFullDate;
 
@@ -131,16 +131,16 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
           const formattedStops = data.map((item) => ({
             id: item.stop_id,    // stop_id を id に入れる
             name: item.stop_name // stop_name を name に入れる
-          }));  
-            setAvailableStops(formattedStops);
-            // 戻り時の場合、Propsの値を再度セット（Stateの更新タイミングを合わせるため）
-            if (keepsSelection && initialData) {
-              setDepartureLocation(initialData.departure);
-              setArrivalLocation(initialData.arrival);
-            }
+          }));
+          setAvailableStops(formattedStops);
+          // 戻り時の場合、Propsの値を再度セット（Stateの更新タイミングを合わせるため）
+          if (keepsSelection && initialData) {
+            setDepartureLocation(initialData.departure);
+            setArrivalLocation(initialData.arrival);
+          }
         } else {
-            setAvailableStops([]);
-        }        
+          setAvailableStops([]);
+        }
       }
     } catch (err) {
       console.error("UserBusBookingPage:停留所の取得に失敗しました", err);
@@ -153,7 +153,7 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
     <div className="bg-cyan-400 rounded-3xl p-4 sm:p-8 mx-4 my-6">
       <div className="bg-white rounded-3xl p-6 sm:p-12">
         <h2 className="text-2xl sm:text-3xl mb-6 text-blue-600">バス予約</h2>
-        
+
         <div className="mb-6">
           <p className="text-blue-600 mb-2">市営バスの予約をします</p>
           <p className="text-blue-600 text-sm">目的地が表示されない場合はタクシー等の他の公共交通機関をお使いください</p>
@@ -194,9 +194,26 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
               ))}
             </select>
           </div>
-          
-          <ArrowRight className="text-cyan-400 hidden sm:block" size={40} strokeWidth={3} />
-          
+
+          {/* 入れ替えボタン */}
+          <button
+            type="button"
+            onClick={() => {
+              const temp = departureLocation;
+              setDepartureLocation(arrivalLocation);
+              setArrivalLocation(temp);
+            }}
+            className="bg-gray-100 p-3 rounded-full hover:bg-gray-200 active:scale-95 transition-all border border-gray-300 shadow-sm group"
+            title="乗車地と降車地を入れ替える"
+          >
+            {/* スマホでは上下、PCでは左右の矢印に見えるようにアイコンを使い分けるか、回転させます */}
+            <div className="flex sm:rotate-0 rotate-90">
+              <div className="flex flex-col sm:flex-row items-center">
+                <ArrowRight className="text-cyan-500 group-hover:text-cyan-600" size={24} strokeWidth={3} />
+              </div>
+            </div>
+          </button>
+
           <div className="flex items-center gap-2 flex-1 min-w-[250px]">
             <span className="bg-cyan-400 text-white px-6 py-2 rounded-lg">降車地</span>
             <select
@@ -218,21 +235,19 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => setTripType('one-way')}
-              className={`px-8 py-2 rounded-lg transition-colors ${
-                tripType === 'one-way'
-                  ? 'bg-gray-400 text-black'
-                  : 'bg-white text-black'
-              }`}
+              className={`px-8 py-2 rounded-lg transition-colors ${tripType === 'one-way'
+                ? 'bg-gray-400 text-black'
+                : 'bg-white text-black'
+                }`}
             >
               片道
             </button>
             <button
               onClick={() => setTripType('round-trip')}
-              className={`px-8 py-2 rounded-lg transition-colors ${
-                tripType === 'round-trip'
-                  ? 'bg-gray-400 text-black'
-                  : 'bg-white text-black'
-              }`}
+              className={`px-8 py-2 rounded-lg transition-colors ${tripType === 'round-trip'
+                ? 'bg-gray-400 text-black'
+                : 'bg-white text-black'
+                }`}
             >
               往復
             </button>
@@ -246,7 +261,7 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
               </p>
             </div>
           )}
-          
+
           {/* Outbound Date and Time Selection */}
           <div className="space-y-4">
             <div className="flex items-center gap-4 flex-wrap">
@@ -399,7 +414,7 @@ export function UserBusBookingPage({ onShowRouteMap, onShowBusResults, initialDa
                   departure: departureLocation,
                   arrival: arrivalLocation,
                   tripType: tripType === 'one-way' ? '片道' : '往復',
-                  outboundDate: outboundDate.slice(0,10),
+                  outboundDate: outboundDate.slice(0, 10),
                   outboundTime: `${outboundHour}:${outboundMinute}`,
                   returnDate: tripType === 'round-trip' ? returnDate : undefined,
                   returnTime: tripType === 'round-trip' ? `${returnHour}:${returnMinute}` : undefined,
