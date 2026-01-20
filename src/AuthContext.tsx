@@ -25,7 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null, session: null, profile: null, role: null, loading: true, signOut: async () => { },
 });
 
-const INACTIVITY_LIMIT = 1 * 60 * 1000; // 5分
+const INACTIVITY_LIMIT = 2 * 60 * 1000; // 5分　今は2分
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);

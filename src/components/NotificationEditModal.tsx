@@ -162,6 +162,7 @@ export function NotificationEditModal({
                   >
                     <option>下書き</option>
                     <option>公開中</option>
+                    <option>非公開</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" size={20} />
                 </div>

@@ -87,12 +87,19 @@ export function NotificationsPage() {
     if (!confirm(`「${title}」を完全に削除してもよろしいですか？`)) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("お知らせ")
         .delete()
-        .eq("notice_id", id);
+        .eq("notice_id", id)
+        .select(); // 削除したデータを取得するように設定
 
       if (error) throw error;
+
+      // 重要：削除対象が見つからず data が空の場合、エラーを投げる
+      if (!data || data.length === 0) {
+        throw new Error("削除対象のお知らせが見つかりませんでした。既に削除されている可能性があります。");
+      }
+
       alert("削除しました");
       fetchNotices();
     } catch (error: any) {
@@ -102,18 +109,25 @@ export function NotificationsPage() {
 
   // --- 非公開（is_draft: false, is_public: false）への切り替え処理 ---
   const handleSetHidden = async (id: number) => {
-    if (!confirm("このお知らせを「非公開」にしますか？（公開が停止されます）")) return;
+    if (!confirm("このお知らせを「非公開」にしますか？")) return;
 
     try {
-      const { error } = await supabase
+      const { data, error, count } = await supabase // countを取得するように設定
         .from("お知らせ")
         .update({ 
           is_draft: false,
           is_public: false
         })
-        .eq("notice_id", id);
+        .eq("notice_id", id) // テスト用の存在しないID
+        .select(); // 更新結果を返すように要求
 
       if (error) throw error;
+
+      // 重要：データが1件も更新されていなければエラーとして扱う
+      if (!data || data.length === 0) {
+        throw new Error("指定されたお知らせが見つかりませんでした。");
+      }
+
       alert("非公開に設定しました");
       fetchNotices();
     } catch (error: any) {
