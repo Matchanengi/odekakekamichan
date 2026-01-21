@@ -3,7 +3,6 @@ import { Clock, ArrowRight} from "lucide-react";
 import { supabase } from "./supabaseClient";
 import type { User } from "@supabase/supabase-js";
 
-/** ページの遷移先を定義する型 */
 type MainPage = "top" | "reservations" | "new-reservation" | "notifications" | "member";
 
 interface NewReservationPageProps {
@@ -11,13 +10,14 @@ interface NewReservationPageProps {
 }
 
 export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
-  // --- 1. マスタ・データ一覧の状態管理 ---
-  const [routes, setRoutes] = useState<any[]>([]);       // 登録されている全路線
-  const [routeStops, setRouteStops] = useState<any[]>([]); // 選択された路線の停留所リスト（方向・時刻情報含む）
-  const [trips, setTrips] = useState<any[]>([]);          // 運行される「便」の情報
+  // --- ステート管理 ---
+  const [routes, setRoutes] = useState<any[]>([]);
+  // const [allStops, setAllStops] = useState<any[]>([]); // 不要になるため削除
+  const [routeStops, setRouteStops] = useState<any[]>([]); // 選択された路線の全停留所データ(方向含む)
 
-  // --- 2. フォーム入力値の状態管理 ---
-  /** 乗車日：初期値は現在時刻のローカル日付（YYYY-MM-DD） */
+  const [trips, setTrips] = useState<any[]>([]);
+  
+  // 日付初期化
   const [rideDate, setRideDate] = useState(() => {
     const dt = new Date();
     const offset = dt.getTimezoneOffset() * 60000;
@@ -25,48 +25,48 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
     return localISOTime;
   });
 
-  const [selectedRouteId, setSelectedRouteId] = useState<number | "">(""); // 選択中の路線ID
-  const [selectedDirection, setSelectedDirection] = useState<number>(0);  // 運行方向 (0:上り, 1:下り)
-  const [selectedTripId, setSelectedTripId] = useState<number | "">("");   // 選択された便ID
-  
-  const [boardingStopId, setBoardingStopId] = useState(""); // 乗車停留所ID
-  const [dropoffStopId, setDropoffStopId] = useState("");  // 降車停留所ID
-  
-  const [adults, setAdults] = useState<number>(1);         // 大人の人数
-  const [children, setChildren] = useState<number>(0);     // 子供の人数
-  
-  const [representativeName, setRepresentativeName] = useState(""); // 代表者名
-  const [phoneNumber, setPhoneNumber] = useState("");               // 電話番号
-  const [notes, setNotes] = useState("");                           // メモ
+  const [selectedRouteId, setSelectedRouteId] = useState<number | "">("");
+  const [selectedDirection, setSelectedDirection] = useState<number>(0); // 0:上り, 1:下り
 
-  // --- 3. 派生データ（計算・バリデーション） ---
-  const totalCount = adults + children; // 合計人数
-  const selectedTrip = trips.find(t => t.trip_id === selectedTripId); // 選択中の便オブジェクト
-  const availableSeats = selectedTrip ? selectedTrip.capacity - selectedTrip.reserved_count : 0; // 空席数
-  const isOverCapacity = selectedTripId && totalCount > availableSeats; // 定員オーバー判定
+  const [selectedTripId, setSelectedTripId] = useState<number | "">("");
+  const [adults, setAdults] = useState<number>(1);
+  const [children, setChildren] = useState<number>(0);
+  
+  const [boardingStopId, setBoardingStopId] = useState("");
+  const [dropoffStopId, setDropoffStopId] = useState("");
+  
+  const [representativeName, setRepresentativeName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [notes, setNotes] = useState("");
 
-  /** 選択された「方向」に一致する停留所だけを抽出 */
+  const totalCount = adults + children;
+  const selectedTrip = trips.find(t => t.trip_id === selectedTripId);
+  const availableSeats = selectedTrip ? selectedTrip.capacity - selectedTrip.reserved_count : 0;
+  const isOverCapacity = selectedTripId && totalCount > availableSeats;
+
+  // --- 派生データ・計算 ---
+
+  // 選択された方向に基づいて停留所をフィルタリング
   const availableStops = useMemo(() => {
     return routeStops.filter(rs => rs.direction === selectedDirection);
   }, [routeStops, selectedDirection]);
 
-  /** 選択中の乗車場所のデータ詳細（順序IDや時刻列を特定するために使用） */
+  // 乗車場所・降車場所のデータオブジェクト（時刻取得用）
   const boardingNode = useMemo(() => 
     availableStops.find(s => s.stop_id === Number(boardingStopId)), 
   [availableStops, boardingStopId]);
 
-  /** 選択中の降車場所のデータ詳細 */
   const dropoffNode = useMemo(() => 
     availableStops.find(s => s.stop_id === Number(dropoffStopId)), 
   [availableStops, dropoffStopId]);
 
-  /** 乗車順序チェック：進行方向に対して、乗車地が降車地より前にあるかを確認 */
+  // 順序チェック (乗車順序ID < 降車順序ID であるべき)
   const isOrderValid = useMemo(() => {
     if (!boardingNode || !dropoffNode) return true;
     return boardingNode.route_stop_id < dropoffNode.route_stop_id;
   }, [boardingNode, dropoffNode]);
 
-  /** フォーム全体の有効性判定：すべての必須条件を満たしているか */
+  // バリデーション
   const isFormValid = 
     selectedTripId !== "" && 
     selectedTripId !== null &&
@@ -78,9 +78,9 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
     dropoffStopId !== "" &&
     isOrderValid;
 
-  // --- 4. データベース取得処理 (useEffect) ---
+  // --- データ取得系 ---
 
-  // 初回ロード：路線マスタを取得
+  // 1. マスタデータ（路線）取得
   useEffect(() => {
     async function fetchMasterData() {
       const { data: routeData } = await supabase.from("バス路線").select("*");
@@ -89,13 +89,14 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
     fetchMasterData();
   }, []);
 
-  // 路線選択時：その路線に属する全停留所と、その通過順序・時刻設定を取得
+  // 2. 路線が選択されたら、その路線の「路線停留所」情報を全て取得（方向情報・時刻列含む）
   useEffect(() => {
     async function fetchRouteStops() {
       if (!selectedRouteId) {
         setRouteStops([]);
         return;
       }
+      // 停留所名も結合して取得
       const { data } = await supabase
         .from("路線停留所")
         .select(`
@@ -106,7 +107,7 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
         .order('route_stop_id', { ascending: true });
 
       if (data) {
-        // リレーション先の停留所名を平坦化して保持
+        // 扱いやすいようにフラット化
         const formatted = data.map((item: any) => ({
           ...item,
           stop_name: item.停留所?.stop_name
@@ -116,20 +117,20 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
     }
     fetchRouteStops();
     
-    // 路線が変わったら選択状態を安全にリセット
+    // 路線が変わったら選択状態をリセット
     setBoardingStopId("");
     setDropoffStopId("");
     setSelectedDirection(0); 
   }, [selectedRouteId]);
 
-  // 方向（上り・下り）変更時：場所と便の選択をリセット
+  // 3. 方向が変わったら停留所選択をリセット
   useEffect(() => {
     setBoardingStopId("");
     setDropoffStopId("");
     setSelectedTripId("");
   }, [selectedDirection]);
 
-  // 条件確定時：その日に運行される「便（Trips）」の情報を取得
+  // 4. 便（Trips）の取得
   useEffect(() => {
     async function fetchTrips() {
       if (!selectedRouteId || !rideDate || !boardingStopId || !dropoffStopId) {
@@ -150,19 +151,18 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
   }, [selectedRouteId, rideDate, boardingStopId, dropoffStopId]);
 
 
-  // --- 5. ヘルパー関数 ---
-  /** * 停留所データの特定の時刻列（stop_time ～ stop_time_4）から
-   * 便のインデックスに応じた時刻を抽出する 
-   */
+  // --- ヘルパー関数 ---
+  // 以前と同じロジックを利用（列名指定で時刻を取得）
   const getSpecificTimeByOrder = (stopData: any, index: number) => {
     if (!stopData) return "--:--";
     const timeColumns = ["stop_time", "stop_time_2", "stop_time_3", "stop_time_4"];
+    // 範囲外チェック
     if (index >= timeColumns.length) return "--:--";
     const time = stopData[timeColumns[index]];
     return time ? time.slice(0, 5) : "--:--";
   };
 
-  // --- 6. 登録処理 (INSERT) ---
+  // --- 登録処理 ---
   const handleRegister = async () => {
     if (!isFormValid || !selectedTripId) {
       alert("入力内容を確認してください。");
@@ -170,7 +170,7 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
     }
 
     try {
-      // (1) 匿名認証：ログインしていない場合は匿名アカウントを作成
+      // 1. 認証チェック
       let { data: { session } } = await supabase.auth.getSession();
       let currentUser: User | null | undefined = session?.user;
 
@@ -181,7 +181,7 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
       }
       if (!currentUser) throw new Error("認証に失敗しました");
 
-      // (2) ユーザ情報の登録/更新 (auth_idをキーにしてUpsert)
+      // 2. ユーザ登録
       const { data: userData, error: userError } = await supabase
         .from("ユーザ")
         .upsert({
@@ -194,7 +194,7 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
 
       if (userError) throw userError;
 
-      // (3) 予約情報の新規登録
+      // 3. 予約登録
       const { error: resError } = await supabase
         .from("予約")
         .insert([{
@@ -202,7 +202,7 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
           trip_id: selectedTripId,
           boarding_id: Number(boardingStopId),
           alighting_id: Number(dropoffStopId),
-          direction: selectedDirection,
+          direction: selectedDirection, // ★方向も保存
           adult_count: adults,
           child_count: children,
           reserved_count: totalCount,
@@ -214,7 +214,7 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
       if (resError) throw resError;
 
       alert("予約を完了しました");
-      onNavigate("reservations"); // 完了後、予約一覧へ遷移
+      onNavigate("reservations");
 
     } catch (error: any) {
       console.error("エラー詳細:", error);
@@ -226,8 +226,6 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
     <div className="bg-green-700 rounded-3xl p-3 sm:p-8">
       <div className="bg-white rounded-3xl p-3 sm:p-8">
         <div className="flex flex-col md:flex-row">
-          
-          {/* サイドナビゲーション */}
           <aside className="w-full md:w-64 md:pr-8 mb-4 md:mb-0">
             <div className="space-y-4 flex flex-row md:flex-col gap-2 md:gap-0">
               <button onClick={() => onNavigate("reservations")} className="w-full bg-green-700 text-white py-4 md:py-6 rounded-2xl border-4 border-white text-center">
@@ -239,14 +237,15 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
             </div>
           </aside>
 
-          {/* メイン入力エリア */}
           <main className="flex-1 space-y-6 h-[80vh] overflow-y-auto px-2">
             <h2 className="text-3xl font-black border-b-4 border-green-50 pb-2 flex items-center gap-2">
               新規予約登録
             </h2>
 
-            {/* 基本情報設定セクション */}
+            {/* 入力フォーム */}
             <div className="grid grid-cols-1 gap-4">
+              
+              {/* 日付・路線・方向 */}
               <div className="p-5 bg-gray-50 rounded-3xl border border-gray-100 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="block">
@@ -267,7 +266,7 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
                   </label>
                 </div>
 
-                {/* 上り・下りの切り替えスイッチ */}
+                {/* 方向選択 (路線が選択されている場合のみ表示) */}
                 {selectedRouteId && (
                   <div>
                     <span className="text-xs font-bold text-gray-500 ml-1 block mb-1">運行方向</span>
@@ -293,7 +292,7 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
                 )}
               </div>
 
-              {/* 乗降場所選択セクション */}
+              {/* 乗降場所 */}
               <div className="p-5 bg-gray-50 rounded-3xl border border-gray-100">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="block">
@@ -305,7 +304,12 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
                       disabled={!selectedRouteId}
                     >
                       <option value="">選択してください</option>
-                      {availableStops.map(s => <option key={s.stop_id} value={s.stop_id}>{s.stop_name}</option>)}
+                      {/* keyをroute_stop_idに変更し、重複警告を回避 */}
+                      {availableStops.map(s => (
+                        <option key={s.route_stop_id} value={s.stop_id}>
+                          {s.stop_name}
+                        </option>
+                      ))}
                     </select>
                   </label>
                   <label className="block">
@@ -317,18 +321,21 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
                       disabled={!selectedRouteId}
                     >
                       <option value="">選択してください</option>
-                      {availableStops.map(s => <option key={s.stop_id} value={s.stop_id}>{s.stop_name}</option>)}
+                      {/* keyをroute_stop_idに変更し、重複警告を回避 */}
+                      {availableStops.map(s => (
+                        <option key={s.route_stop_id} value={s.stop_id}>
+                          {s.stop_name}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
-                {/* 逆走防止アラート */}
                 {!isOrderValid && boardingStopId && dropoffStopId && (
                    <p className="text-red-500 text-sm font-bold mt-2 ml-1">※ 進行方向に対して逆の停留所が選択されています。</p>
                 )}
               </div>
             </div>
 
-            {/* 人数選択セクション */}
             <section className="bg-green-50 p-6 rounded-3xl border-2 border-green-100 flex flex-wrap gap-8 items-center">
               <div className="flex items-center gap-3 font-bold text-green-800">
                 <span>おとな</span>
@@ -340,31 +347,29 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
               </div>
             </section>
 
-            {/* 便選択セクション（条件によって表示が動的に変化） */}
+            {/* 便選択セクション */}
             <section className="space-y-4">
               <h3 className="font-bold text-gray-700 flex items-center gap-2">
                 <Clock size={18} />乗車便の選択
               </h3>
-              
-              {/* 条件未設定時 */}
               {(!selectedRouteId || !boardingStopId || !dropoffStopId) ? (
                 <div className="p-8 border-2 border-dashed border-gray-200 rounded-3xl text-center text-gray-400 text-sm">
                   路線・方向・停留所を選択してください
                 </div>
               ) : !isOrderValid ? (
-                 /* 順序エラー時 */
                  <div className="p-8 bg-red-50 border-2 border-dashed border-red-200 rounded-3xl text-center text-red-500 text-sm">
                    乗降場所の順序が正しくありません。<br/>方向設定を確認するか、場所を選び直してください。
                  </div>
               ) : (
-                /* 有効な便のリスト表示 */
                 <div className="space-y-3">
                   {(() => {
-                    // 1. 各便の「現在選択された乗降地」における時刻を計算し、有効な便か判定
+                    // 1. 各便の出発・到着時刻を計算し、有効フラグを付ける
                     const tripsWithValidity = trips.map((trip, index) => {
+                      // boardingNode, dropoffNode は useMemo で計算済みの、現在選択されている方向のデータ
                       const bTime = getSpecificTimeByOrder(boardingNode, index);
                       const dTime = getSpecificTimeByOrder(dropoffNode, index);
 
+                      // 時刻を数値（分）に変換する関数
                       const timeToMin = (t: string) => {
                         if (!t || t === "--:--" || !t.includes(":")) return -1;
                         const [h, m] = t.split(":").map(Number);
@@ -374,25 +379,26 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
                       const bMin = timeToMin(bTime);
                       const dMin = timeToMin(dTime);
 
-                      // 判定：時刻が存在し、かつ到着（dMin）が出発（bMin）より後の便のみ有効
+                      // 判定：時刻が存在し、かつ到着が出発より後であること
                       const isValid = bMin !== -1 && dMin !== -1 && dMin > bMin;
 
                       return { ...trip, bTime, dTime, isValid };
                     });
 
-                    // 2. 有効な便のみ抽出
+                    // 2. 有効な便（isValid === true）だけに絞り込む
                     const validTrips = tripsWithValidity.filter(t => t.isValid);
 
-                    // 3. 表示対象がない（運行がない）場合
+                    // 3. 表示対象がない場合のメッセージ
                     if (validTrips.length === 0 && trips.length > 0) {
                       return (
                         <div className="p-8 bg-orange-50 border-2 border-dashed border-orange-200 rounded-3xl text-center text-orange-600 text-sm">
-                          ご指定の区間で利用可能な便はありません。
+                          ご指定の区間（{rideDate}）で利用可能な便はありません。<br/>
+                          時刻表の設定がないか、運行時間外の可能性があります。
                         </div>
                       );
                     }
 
-                    // 4. 有効な便をラジオボタンで一覧表示
+                    // 4. 有効な便をリスト表示
                     return validTrips.map((trip) => {
                       const isFull = trip.reserved_count >= trip.capacity;
                       return (
@@ -436,7 +442,6 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
               )}
             </section>
 
-            {/* 顧客情報入力セクション */}
             <section className="space-y-4 pt-4 border-t border-gray-100">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="text" placeholder="代表者名 *" value={representativeName} onChange={(e) => setRepresentativeName(e.target.value)} className="w-full border-2 border-black rounded-xl p-3 outline-none" />
@@ -445,11 +450,10 @@ export function NewReservationPage({ onNavigate }: NewReservationPageProps) {
               <textarea placeholder="メモ" value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full border-2 border-black rounded-xl p-3 h-20 resize-none outline-none" />
             </section>
 
-            {/* 登録実行ボタン */}
             <div className="flex flex-col items-center py-6">
               <button 
                 onClick={handleRegister} 
-                disabled={!isFormValid} // バリデーションを通らない限りクリック不可
+                disabled={!isFormValid}
                 className={`w-full max-w-sm py-4 rounded-2xl font-black text-xl shadow-lg transition-all ${isFormValid ? "bg-green-700 text-white" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
               >
                 予約を確定する
