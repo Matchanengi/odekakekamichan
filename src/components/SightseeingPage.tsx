@@ -8,6 +8,8 @@ import { supabase } from './supabaseClient';
 interface Spot {
   spot_id: number;
   name: string;
+  latitude: number | null;
+  longitude: number | null;
   hurigana: string;
   distance: number | null;
   description: string;
@@ -51,7 +53,9 @@ export function SightseeingPage() {
           regular_holiday,
           parking,
           fee,
-          contact_info
+          contact_info,
+          latitude,
+          longitude
         `);
 
       if (error) {
