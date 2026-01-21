@@ -5,13 +5,16 @@ import "react-datepicker/dist/react-datepicker.css";
 import { ja } from "date-fns/locale";
 import { supabase } from "./supabaseClient";
 
-// カレンダーの日本語化設定
+// react-datepickerを日本語化するための設定
 registerLocale("ja", ja);
 
 interface NotificationEditModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  // 親コンポーネントから渡されるデータ。新規作成時は null または undefined。
+  isOpen: boolean; // モーダルの表示フラグ
+  onClose: () => void; // モーダルを閉じる際のコールバック
+  /** * 親から渡されるお知らせデータ
+   * - 既存データの編集時はオブジェクトが入る
+   * - 新規作成時は null または undefined になる
+   */
   notification?: any | null;
 }
 
@@ -20,31 +23,34 @@ export function NotificationEditModal({
   onClose,
   notification,
 }: NotificationEditModalProps) {
-  // --- フォームの状態管理 ---
+  // --- フォームの状態管理 (State) ---
   const [status, setStatus] = useState("下書き");
   const [importance, setImportance] = useState("通常");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [startDate, setStartDate] = useState<Date | null>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(new Date());
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // 保存中の二重送信防止フラグ
 
-  // --- 初期化処理 ---
+  // --- 初期化処理 (Effect) ---
+  /** モーダルが開いた時、または対象データが切り替わった時にフォーム値をセットする */
   useEffect(() => {
     if (notification) {
-      // 【編集モード】既存のデータを入力欄にセット
+      // 【編集モード】
+      // ステータスが「公開前（予約状態）」の場合は、便宜上「公開中」として扱う（UIの選択肢に合わせる）
       setStatus(notification.status === "公開前" ? "公開中" : notification.status);
       setImportance(notification.importance);
       setTitle(notification.title);
       setContent(notification.content);
 
-      // 日付の復元（文字列 "26/01/14" を JavaScript の Date 型に変換）
+      // 日付の復元処理
+      // 文字列 "26/01/14" を "2026/01/14" に補完して Date オブジェクトに変換
       const baseYear = "20" + notification.startDate.split("/")[0];
       setStartDate(new Date(notification.startDate.replace(/^\d{2}/, baseYear)));
       const baseYearEnd = "20" + notification.endDate.split("/")[0];
       setEndDate(new Date(notification.endDate.replace(/^\d{2}/, baseYearEnd)));
     } else {
-      // 【新規作成モード】リセット
+      // 【新規作成モード】初期状態にリセット
       setStatus("下書き");
       setImportance("通常");
       setTitle("");
@@ -54,11 +60,12 @@ export function NotificationEditModal({
     }
   }, [notification, isOpen]);
 
+  // モーダルが非表示なら何も描画しない
   if (!isOpen) return null;
 
-  // --- 保存処理（INSERT / UPDATE） ---
+  // --- 保存処理 (Submit) ---
   const handleSubmit = async () => {
-    // バリデーション
+    // 基本的なバリデーション
     if (!title || !content || !startDate || !endDate) {
       alert("必須項目を入力してください");
       return;
@@ -66,20 +73,23 @@ export function NotificationEditModal({
 
     setIsSubmitting(true);
 
-    // 画面上の選択肢をDBのカラム形式に変換
+    // UI上の「ステータス」の文字列を、データベースの論理型（Boolean）カラムへ変換
     const is_draft = status === "下書き";
     const is_public = status === "公開中" || status === "公開前";
     const importance_bool = importance === "緊急";
 
-    // 【重要】タイムゾーンのズレ（1日減る問題）を解決する日付フォーマット関数
+    /** * 日付整形関数 (Helper)
+     * new Date() をそのまま DB（PostgreSQL）に送ると、タイムゾーンの関係で
+     * 1日ずれることがあるため、常に「YYYY-MM-DD」の文字列形式で送信する
+     */
     const toLocalDateString = (date: Date) => {
       const y = date.getFullYear();
       const m = String(date.getMonth() + 1).padStart(2, "0");
       const d = String(date.getDate()).padStart(2, "0");
-      return `${y}-${m}-${d}`; // YYYY-MM-DD 形式
+      return `${y}-${m}-${d}`;
     };
 
-    // 送信用データオブジェクト
+    // 保存するデータのオブジェクト作成
     const saveData = {
       title,
       content,
@@ -93,12 +103,12 @@ export function NotificationEditModal({
     try {
       if (notification?.id) {
         // --- 【UPDATE：編集処理】 ---
-        const targetId = Number(notification.id); // 確実に数値型にする
+        const targetId = Number(notification.id);
 
         const { data, error } = await supabase
-          .from("お知らせ")          // 実体テーブルを指定
+          .from("お知らせ")          // ビューではなく実体テーブルに更新をかける
           .update(saveData)
-          .eq("notice_id", targetId) // カラム名は notice_id
+          .eq("notice_id", targetId) 
           .select();
 
         if (error) throw error;
@@ -107,7 +117,7 @@ export function NotificationEditModal({
           alert(`更新対象が見つかりませんでした (ID:${targetId})。`);
         } else {
           alert("更新に成功しました！");
-          onClose();
+          onClose(); // 成功したらモーダルを閉じる
         }
       } else {
         // --- 【INSERT：新規作成処理】 ---
@@ -127,28 +137,36 @@ export function NotificationEditModal({
     }
   };
 
+  // 新規作成か編集かを判定するフラグ
   const isNewNotification = !notification;
 
   return (
+    /* 背景オーバーレイ */
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
       <style>{`
+        /* DatePickerの幅を親要素に合わせるための調整 */
         .react-datepicker-wrapper { width: 100%; }
         .react-datepicker__input-container input { width: 100%; }
       `}</style>
 
+      {/* 外枠（緑の太枠） */}
       <div className="bg-green-700 rounded-3xl p-2 sm:p-4 w-full max-w-4xl shadow-2xl">
+        {/* 内側の白背景コンテンツ */}
         <div className="bg-white rounded-2xl p-4 sm:p-8 relative max-h-[90vh] overflow-y-auto border-4 border-black">
           
+          {/* 閉じるボタン */}
           <button onClick={onClose} className="absolute top-4 right-4 text-black hover:opacity-70">
             <X size={32} strokeWidth={3} />
           </button>
 
+          {/* タイトルセクション */}
           <h2 className="text-xl sm:text-2xl font-bold mb-6 flex items-center gap-2">
             <span className="text-green-700">●</span>
             {isNewNotification ? "新規お知らせ作成" : "お知らせの編集"}
           </h2>
 
           <div className="space-y-6">
+            {/* ステータス & 重要度の設定行 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
                 <label className="bg-green-700 text-white px-4 py-2 rounded-lg font-bold min-w-[100px] text-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
@@ -186,6 +204,7 @@ export function NotificationEditModal({
               </div>
             </div>
 
+            {/* タイトル入力欄 */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <label className="bg-green-700 text-white px-4 py-2 rounded-lg font-bold min-w-[100px] text-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
@@ -201,6 +220,7 @@ export function NotificationEditModal({
               </div>
             </div>
 
+            {/* 公開期間（DatePicker：カレンダー選択） */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <label className="bg-green-700 text-white px-4 py-2 rounded-lg font-bold min-w-[100px] text-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
@@ -216,7 +236,7 @@ export function NotificationEditModal({
                     }}
                     startDate={startDate}
                     endDate={endDate}
-                    selectsRange
+                    selectsRange // 範囲選択を有効化
                     locale="ja"
                     dateFormat="yyyy/MM/dd"
                     className="w-full border-2 border-black rounded-lg p-2 pl-10 font-bold"
@@ -226,6 +246,7 @@ export function NotificationEditModal({
               </div>
             </div>
 
+            {/* 本文入力欄 */}
             <div className="space-y-2">
               <label className="font-bold block">本文：</label>
               <textarea
@@ -236,10 +257,11 @@ export function NotificationEditModal({
               />
             </div>
 
+            {/* アクションボタン */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting} // 送信中はボタンを無効化
                 className="bg-green-700 text-white px-12 py-3 rounded-xl font-bold border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-0.5 hover:shadow-none transition-all disabled:bg-gray-400"
               >
                 {isSubmitting ? "保存中..." : (isNewNotification ? "新規作成" : "変更を保存")}

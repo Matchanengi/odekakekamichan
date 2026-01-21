@@ -1,5 +1,5 @@
 'use client';
-
+//多分使ってないファイル 　開発最初の仮ページ
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import Link from 'next/link';

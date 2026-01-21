@@ -2,6 +2,10 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { supabase } from './components/supabaseClient';
 import type { User, Session } from '@supabase/supabase-js';
 
+/**
+ * カスタムロガー
+ * 認証の状態やデータベースの同期状況をコンソールに色付きで出力します。
+ */
 const logger = {
   info: (msg: string, data?: any) => console.log(`%c 🔐 [Auth] ${msg}`, 'background: #3b82f6; color: white; padding: 2px 4px; border-radius: 4px;', data || ''),
   db: (msg: string, data?: any) => console.log(`%c 💾 [Database] ${msg}`, 'background: #10b981; color: white; padding: 2px 4px; border-radius: 4px;', data || ''),
@@ -10,22 +14,28 @@ const logger = {
   warn: (msg: string) => console.log(`%c ⏳ [Timeout] ${msg}`, 'background: #f59e0b; color: white; padding: 2px 4px; border-radius: 4px;')
 };
 
+// ユーザーの役割（管理者、一般ユーザー、または未設定）
 type UserRole = 'user' | 'admin' | null;
 
+/**
+ * Contextで共有するデータの型定義
+ */
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  profile: any | null;
-  role: UserRole;
-  loading: boolean;
-  signOut: () => Promise<void>;
+  user: User | null;      // Supabaseの認証ユーザー情報
+  session: Session | null; // 現在のセッション
+  profile: any | null;     // DB（管理者/ユーザテーブル）から取得した詳細プロフィール
+  role: UserRole;          // ユーザーの役割
+  loading: boolean;        // 初期化中フラグ
+  signOut: () => Promise<void>; // ログアウト関数
 }
 
+// コンテキストの初期化
 const AuthContext = createContext<AuthContextType>({
   user: null, session: null, profile: null, role: null, loading: true, signOut: async () => { },
 });
 
-const INACTIVITY_LIMIT = 2 * 60 * 1000; // 5分　今は2分
+// 無操作タイムアウトの時間設定（2分）
+const INACTIVITY_LIMIT = 2 * 60 * 1000; 
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -34,9 +44,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Supabase Authのユーザー情報を元に、DB内の管理者/ユーザテーブルと同期する関数
+   */
   const syncProfileAndRole = async (currentUser: User) => {
     if (!currentUser.email) return;
     try {
+      // 1. まず「管理者」テーブルを検索
       const { data: adminData } = await supabase.from('管理者').select('*').eq('email', currentUser.email).maybeSingle();
       if (adminData) {
         setProfile(adminData);
@@ -44,14 +58,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logger.success(`管理者として認証: ${adminData.name}`);
         return;
       }
+
+      // 2. 次に「ユーザ」テーブルを検索
       const { data: userData } = await supabase.from('ユーザ').select('*').eq('email', currentUser.email).maybeSingle();
       if (userData) {
         setProfile(userData);
         setRole('user');
         logger.success(`一般ユーザーとして認証: ${userData.name}`);
       } else {
+        // 3. どちらにも存在しない場合は新規ユーザーとして「ユーザ」テーブルに登録
         const newName = currentUser.user_metadata.full_name || currentUser.email.split('@')[0];
-        const { data: created } = await supabase.from('ユーザ').insert({ name: newName, email: currentUser.email, password_hash: 'managed_by_auth' }).select().single();
+        const { data: created } = await supabase.from('ユーザ').insert({ 
+          name: newName, 
+          email: currentUser.email, 
+          password_hash: 'managed_by_auth' 
+        }).select().single();
+
         if (created) {
           setProfile(created);
           setRole('user');
@@ -63,29 +85,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  /**
+   * ログアウト処理
+   */
   const signOut = async () => {
     logger.info('ログアウト処理を実行...');
     await supabase.auth.signOut();
+    // 各種状態をリセット
     setProfile(null);
     setUser(null);
     setSession(null);
     setRole(null);
   };
 
-  // --- ★ タイムアウト監視ロジック（強化版） ---
+  /**
+   * タイムアウト監視ロジック
+   * ユーザーが操作を行わない場合に自動的にログアウトさせます。
+   */
   useEffect(() => {
-    // ログインしていない、またはロード中は何もしない
+    // 未ログインまたはロード中は監視しない
     if (!user || loading) return;
 
     let timerId: number | undefined;
 
+    // タイマーをリセットし、再カウントを開始する関数
     const resetTimer = () => {
-      // 既存のタイマーをクリア
       if (timerId) window.clearTimeout(timerId);
 
-      // 新しいタイマーをセット
       timerId = window.setTimeout(() => {
-        // タイマー実行時にまだユーザーがログインしている場合のみ実行
         if (user) {
           logger.warn('無操作タイムアウト：ログアウトを実行します');
           alert('安全のため、一定時間操作がなかったためログアウトしました。');
@@ -94,32 +121,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }, INACTIVITY_LIMIT);
     };
 
-    // 検知するイベントを増強
+    // 操作を検知するイベント一覧
     const activityEvents = [
       'mousedown', 'mousemove', 'keydown',
       'scroll', 'touchstart', 'click'
     ];
 
-    // イベント登録
+    // 各イベントにリスナーを登録
     activityEvents.forEach(event => {
       window.addEventListener(event, resetTimer);
     });
 
-    // 初回タイマー開始
+    // 初期タイマー起動
     resetTimer();
 
-    // クリーンアップ（ここが重要：イベントとタイマーを確実に消す）
+    // クリーンアップ処理：コンポーネントが消える時や再実行時に古いタイマーやリスナーを削除
     return () => {
       if (timerId) window.clearTimeout(timerId);
       activityEvents.forEach(event => {
         window.removeEventListener(event, resetTimer);
       });
     };
-  }, [user, loading]); // userが変わったとき、またはロード完了時に再セット
+  }, [user, loading]); // ユーザーの状態が変わるたびに監視を再設定
 
-  // --- 初期化ロジック ---
+  /**
+   * 初期化ロジック
+   * アプリ起動時のセッション確認および状態変化の監視を行います。
+   */
   useEffect(() => {
     let mounted = true;
+
+    // 起動時に現在のセッション（ログイン状態）を取得
     const init = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -136,17 +168,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
     init();
 
+    // ログイン・ログアウトなどの認証状態の変化を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       logger.info(`状態変化: ${event}`);
       const currentUser = session?.user ?? null;
+      
       setUser(currentUser);
       setSession(session);
       setLoading(false);
+
       if (!currentUser) {
+        // ログアウト時
         setProfile(null);
         setRole(null);
       } else {
+        // ログイン時またはセッション更新時
         syncProfileAndRole(currentUser);
       }
     });
@@ -159,6 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ user, session, profile, role, loading, signOut }}>
+      {/* ロード中（初期チェック中）はスプラッシュ画面を表示 */}
       {!loading ? children : (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
@@ -169,4 +207,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+/**
+ * 認証情報を利用するためのカスタムフック
+ */
 export const useAuth = () => useContext(AuthContext);

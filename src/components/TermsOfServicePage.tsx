@@ -1,15 +1,29 @@
 // src/components/TermsOfServicePage.tsx
 
+/**
+ * 利用規約ページコンポーネント
+ * @param onBack - 「確認」ボタン押下時のコールバック関数
+ * @param isAdmin - 管理者モードかどうか（背景色を切り替えるフラグ）
+ */
 export function TermsOfServicePage({ onBack, isAdmin = false }: { onBack: () => void; isAdmin?: boolean }) {
+  // 管理者(isAdmin)ならグリーン、一般ユーザーならシアンの背景色を選択
   const bgColor = isAdmin ? 'bg-green-700' : 'bg-cyan-400';
   
   return (
+    /* 外側のコンテナ：画面サイズに応じたパディング(p-3 / sm:p-8)を設定 */
     <div className={`${bgColor} rounded-3xl p-3 sm:p-8`}>
+      
+      {/* 白背景のカード部分：影(shadow-sm)と丸みをつけて内容を際立たせる */}
       <div className="bg-white rounded-3xl p-6 sm:p-12 shadow-sm">
+        
+        {/* タイトル：フォントサイズと色の設定。mb(マージンボトム)で下の余白を確保 */}
         <h2 className="text-2xl sm:text-3xl mb-8 sm:mb-12 text-blue-600 font-bold">利用規約</h2>
         
+        {/* 規約文のスクロールエリア：h-[400px]で高さを固定し、overflow-y-autoで縦スクロールを有効化 */}
         <div className="border-2 border-black rounded-lg p-6 bg-white h-[400px] sm:h-[500px] overflow-y-auto mb-6">
-          <div className="space-y-6">
+          <div className="space-y-6"> {/* 各セクション間に均等な隙間を作る */}
+            
+            {/* 規約の冒頭文 */}
             <div>
               <h3 className="mb-4 font-bold text-gray-800">【株式会社まっちゃんエンジニアリング利用規約】</h3>
               <p className="leading-relaxed text-gray-700">
@@ -20,22 +34,15 @@ export function TermsOfServicePage({ onBack, isAdmin = false }: { onBack: () => 
               </p>
             </div>
 
-            <div>
-              <h3 className="mb-2 font-bold text-gray-800">第1条(適用)</h3>
-              <p className="leading-relaxed text-gray-700">
-                本規約は，ユーザーと当社との間の本サービスの利用に関わる一切の関係に適用されるものとします。
-              </p>
-            </div>
-
+            {/* 第1条：適用範囲 */}
             <div>
               <h3 className="mb-2 font-bold text-gray-800">第2条(おでかけかみちゃんについて)</h3>
-              {/* ★ <p> を <div> に変更 */}
               <div className="leading-relaxed text-gray-700">
-                <ol className="list-decimal ml-6 mt-2 space-y-2">
+                <ol className="list-decimal ml-6 mt-2 space-y-2"> {/* 数字付きリスト、左インデント(ml-6) */}
                   <li>「おでかけかみちゃん」は、高知県香美市が運営するデマンド型交通システムの予約管理サービスです。(以下、「本サービス」といいます。)本サービスを通じて、利用者は便利に予約を行うことができます。</li>
                   <li>本サービスにおいては，登録希望者が本規約に同意の上，当社の定める方法によって利用登録を申請し，当社がこれを承認することによって，利用登録が完了するものとします。</li>
                   <li>当社は，利用登録の申請者に以下の事由があると判断した場合，利用登録の申請を承認しないことがあり，その理由については一切の開示義務を負わないものとします。
-                    {/* ★ ネストしたリストは li の中に入れるのが正しい構造です */}
+                    {/* 箇条書きのネスト：白抜きの丸(list-[circle])を指定 */}
                     <ol className="list-[circle] ml-6 mt-2 space-y-1">
                       <li>利用登録の申請に際して虚偽 of 事項を届け出た場合</li>
                       <li>本規約に違反したことがある者からの申請である場合</li>
@@ -46,6 +53,7 @@ export function TermsOfServicePage({ onBack, isAdmin = false }: { onBack: () => 
               </div>
             </div>
 
+            {/* 第3条〜第6条：各項目を構造化 */}
             <div>
               <h3 className="mb-2 font-bold text-gray-800">第3条(利用者の義務)</h3>
               <p className="leading-relaxed text-gray-700">
@@ -74,9 +82,9 @@ export function TermsOfServicePage({ onBack, isAdmin = false }: { onBack: () => 
               </p>
             </div>
 
+            {/* 第7条：禁止事項（多項目リスト） */}
             <div>
               <h3 className="mb-2 font-bold text-gray-800">第7条(禁止事項)</h3>
-              {/* ★ <p> を <div> に変更 */}
               <div className="leading-relaxed text-gray-700">
                 <ol className="list-decimal ml-6 mt-2 space-y-1">
                   <li>法令または公序良俗に違反する行為</li>
@@ -100,6 +108,7 @@ export function TermsOfServicePage({ onBack, isAdmin = false }: { onBack: () => 
           </div>
         </div>
 
+        {/* ボタンエリア：中央寄せにし、クリック時のアニメーション(active:scale-95)を設定 */}
         <div className="flex justify-center gap-4">
           <button
             onClick={onBack}
@@ -108,6 +117,7 @@ export function TermsOfServicePage({ onBack, isAdmin = false }: { onBack: () => 
             確認
           </button>
         </div>
+        
       </div>
     </div>
   );

@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-
+/**
+ * バス情報のインターフェース
+ */
 interface Bus {
   id: number;
   departureTime: string;
@@ -13,6 +15,9 @@ interface Bus {
   direction: boolean;
 }
 
+/**
+ * Propsの型定義
+ */
 interface BusResultsPageProps {
   searchData: {
     line: string;
@@ -49,7 +54,10 @@ interface BusResultsPageProps {
     fare: number;
   }) => void;
 }
-// Supabaseから返ってくるデータの構造を定義
+
+/**
+ * Supabaseから返ってくる結合データの構造を定義
+ */
 interface RouteWithStops {
   route_id: number;
   route_name: string;
@@ -74,15 +82,19 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    /**
+     * 条件に合致するバス便データを取得・加工する内部関数
+     */
     async function fetchBuses() {
       console.log("BusResultPage:--- 検索開始 ---");
       setOutboundBuses([]);
       setReturnBuses([]);
       setIsLoading(true);
+
       try {
-        // 
         const getBusData = async (date: string, lineName: string, depName: string, arrName: string, targetTime: string) => {
-          // 1. 路線と全停留所を取得（direction 0と1の両方）
+          
+          // 1. 指定された「路線名」に基づき、全停留所と通過予定時刻のマスタを取得
           const { data: rawRoutes, error: routeError } = await supabase
             .from('バス路線')
             .select(`
@@ -98,16 +110,17 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
           if (routeError || !routes || routes.length === 0) return [];
           const allStops = routes[0].路線停留所 || [];
 
-          // 「路線全体の本当の始発点」を特定（常にここをキーにする）
-          // 理由：便テーブルの departure_time は、この地点の時刻しか持っていないため
+          // 2. 「路線全体の本当の始発点」を特定
+          // 運行便テーブル(trips)の departure_time は始発停留所の時刻を指すため、マスタ照合の基準キーとなる
           const absoluteMinOrder = Math.min(...allStops.map((s: any) => s.stop_order));
           const routeOriginStop = allStops.find((s: any) => s.stop_order === absoluteMinOrder);
 
           if (!routeOriginStop) {
             console.warn("路線の始発停留所を特定できませんでした。");
-            return []; // 見つからない場合は空のリストを返して終了する
+            return [];
           }
-          // 3. 便データの取得
+
+          // 3. 指定日の運行スケジュール（便）を取得
           const { data: trips } = await supabase
             .from('便')
             .select('*')
@@ -116,10 +129,13 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
 
           if (!trips) return [];
 
+          // 4. 便ごとに、ユーザーが指定した停留所を通るか、空席があるかを判定して整形
           return trips.map(trip => {
-            // 4. 便の特定（常に全体の始発点 A の時刻と比較）
+            // 便の出発時刻（HH:mm）を取得
             const tripStartT = trip.departure_time.split(':').slice(0, 2).join(':');
             let timeKey: 'stop_time' | 'stop_time_2' | 'stop_time_3' | 'stop_time_4' | '' = '';
+            
+            // 始発点の時刻が stop_time ~ stop_time_4 のどれに合致するか判定し、参照するカラム(timeKey)を決定
             const checkMatch = (t: string | null) => t?.split(':').slice(0, 2).join(':') === tripStartT;
 
             if (checkMatch(routeOriginStop.stop_time)) timeKey = 'stop_time';
@@ -129,33 +145,32 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
 
             if (!timeKey) return null;
 
-            // 5. ユーザーが探している「乗車駅」「降車駅」の組み合わせが
-            // direction: 0 か 1 どちらにあるか自動判定する
-
-            // まず direction: 0 で探してみる
+            // 5. 進行方向（direction: 0 か 1）の自動判定
+            // まずは direction: 0 で、乗車停留所が降車停留所より前にあるかを確認
             let depStop = allStops.find(s => s.停留所?.stop_name === depName && s.direction === 0);
             let arrStop = allStops.find(s => s.停留所?.stop_name === arrName && s.direction === 0);
             let currentDirection = 0;
 
-            // direction: 0 に正しい順序（dep < arr）で存在しない場合、direction: 1 を探す
+            // 0に存在しないか順序が逆なら、逆方向(direction: 1)を探す
             if (!(depStop && arrStop && depStop.stop_order < arrStop.stop_order)) {
               depStop = allStops.find(s => s.停留所?.stop_name === depName && s.direction === 1);
               arrStop = allStops.find(s => s.停留所?.stop_name === arrName && s.direction === 1);
               currentDirection = 1;
             }
-            // 6. 進行方向チェック（同じ direction 内で順番が正しいか）
+
+            // 6. 停留所が見つかり、順序が正しい場合の最終処理
             if (depStop && arrStop && depStop.stop_order < arrStop.stop_order) {
               const actualDepTime = depStop[timeKey]?.split(':').slice(0, 2).join(':');
               const actualArrTime = arrStop[timeKey]?.split(':').slice(0, 2).join(':');
               const searchLimit = targetTime.split(':').slice(0, 2).join(':');
 
-              // ユーザーの検索条件（B地点の通過時刻など）に合うか判定
+              // 指定した希望時刻以降の便のみを採用
               if (actualDepTime && actualDepTime >= searchLimit) {
                 return {
                   id: trip.trip_id,
-                  departureTime: actualDepTime, // B地点の通過時刻が入る
-                  arrivalTime: actualArrTime,   // A地点(戻り)の到着時刻が入る
-                  availableSeats: trip.capacity - (trip.reserved_count || 0),
+                  departureTime: actualDepTime, // 指定乗車停留所の時刻
+                  arrivalTime: actualArrTime,   // 指定降車停留所の時刻
+                  availableSeats: trip.capacity - (trip.reserved_count || 0), // 残席計算
                   totalSeats: trip.capacity,
                   fare: trip.fare,
                   direction: currentDirection === 1
@@ -164,13 +179,11 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
             }
             return null;
           })
-            .filter((b): b is Bus => b !== null)
-            .sort((a, b) => a.departureTime.localeCompare(b.departureTime));
+            .filter((b): b is Bus => b !== null) // null（不適合便）を除外
+            .sort((a, b) => a.departureTime.localeCompare(b.departureTime)); // 時刻順にソート
         };
 
-        // --- 実行（アラートを1回にまとめるため await で順番に処理） ---
-
-        // 行き
+        // --- 行きのデータ取得 ---
         const outboundResults = await getBusData(
           searchData.outboundDate,
           searchData.line,
@@ -180,12 +193,12 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
         );
         setOutboundBuses(outboundResults);
 
-        // 帰り（往復の場合のみ）
+        // --- 帰りのデータ取得（往復選択時のみ） ---
         if (searchData.tripType === '往復' && searchData.returnDate) {
           const returnResults = await getBusData(
             searchData.returnDate,
             searchData.line,
-            searchData.arrival, // 帰りは出発地と目的地を逆にする
+            searchData.arrival, // 帰りは出発と到着を入れ替える
             searchData.departure,
             searchData.returnTime || '00:00'
           );
@@ -202,6 +215,9 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
     fetchBuses();
   }, [searchData]);
 
+  /**
+   * 選択確定ボタン押下時の処理
+   */
   const handleConfirm = () => {
     if (searchData.tripType === '片道' && selectedOutboundBus) {
       onConfirm({
@@ -232,6 +248,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
     }
   };
 
+  // 確定ボタンの活性・非活性判定
   const isConfirmDisabled =
     isLoading ||
     (searchData.tripType === '片道' && !selectedOutboundBus) ||
@@ -244,7 +261,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
           <div className="bg-white rounded-[2.5rem] p-8 sm:p-16">
             <h1 className="text-blue-900 mb-6 text-2xl font-bold">バス候補</h1>
 
-            {/* 検索概要 */}
+            {/* 検索条件の要約表示 */}
             <div className="mb-8 p-4 bg-gray-50 rounded-2xl">
               <p className="text-blue-900 mb-2">路線: {searchData.line}</p>
               <div className="flex items-center gap-4">
@@ -255,13 +272,14 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
             </div>
 
             {isLoading ? (
+              /* ローディング中画面 */
               <div className="flex flex-col items-center justify-center py-20">
                 <Loader2 className="animate-spin text-cyan-400 mb-4" size={48} />
                 <p>空席情報を確認中...</p>
               </div>
             ) : (
               <>
-                {/* 行きのリスト */}
+                {/* 行きの便リスト表示 */}
                 <BusList
                   title={`行き (${searchData.outboundDate})`}
                   buses={outboundBuses}
@@ -269,7 +287,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
                   onSelect={setSelectedOutboundBus}
                 />
 
-                {/* 帰りのリスト */}
+                {/* 帰りの便リスト表示（往復のみ） */}
                 {searchData.tripType === '往復' && (
                   <BusList
                     title={`帰り (${searchData.returnDate})`}
@@ -281,7 +299,7 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
               </>
             )}
 
-            {/* アクションボタン */}
+            {/* 下部ナビゲーションボタン */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-12">
               <button
                 onClick={() => onBack(searchData)}
@@ -305,7 +323,10 @@ export function BusResultsPage({ searchData, onBack, onConfirm }: BusResultsPage
   );
 }
 
-// リスト表示用のサブコンポーネント（可読性向上のため）
+/**
+ * リスト表示用のサブコンポーネント
+ * 便の選択肢をボタン形式で一覧表示する
+ */
 function BusList({ title, buses, selectedBusId, onSelect }: {
   title: string, buses: Bus[], selectedBusId?: number, onSelect: (bus: Bus) => void
 }) {
@@ -324,6 +345,7 @@ function BusList({ title, buses, selectedBusId, onSelect }: {
                 }`}
             >
               <div className="flex justify-between items-center">
+                {/* 時刻表示（出発・到着） */}
                 <div className="flex items-center gap-6">
                   <div>
                     <div className="text-xs text-gray-500">出発</div>
@@ -335,6 +357,7 @@ function BusList({ title, buses, selectedBusId, onSelect }: {
                     <div className="text-xl font-bold">{bus.arrivalTime}</div>
                   </div>
                 </div>
+                {/* 空席状況（残数が少ない場合は赤字で表示） */}
                 <div className="text-right">
                   <div className="text-xs text-gray-500">空席</div>
                   <div className={`font-bold ${bus.availableSeats < 3 ? 'text-red-500' : 'text-green-600'}`}>

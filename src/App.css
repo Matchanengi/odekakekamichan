@@ -1,37 +1,67 @@
 @import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
 
+/**
+ * ----------------------------------------------------------------
+ * 1. 基本カラーテーマ（ライトモード）
+ * ----------------------------------------------------------------
+ * アプリ全体の配色を定義するCSS変数群です。
+ */
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
+  --background: #ffffff;             /* アプリ全体の背景色 */
+  --foreground: oklch(0.145 0 0);    /* 標準的なテキストの色 */
+  
+  /* カード・パネル要素 */
   --card: #ffffff;
   --card-foreground: oklch(0.145 0 0);
+  
+  /* ポップオーバー・ドロップダウンメニュー */
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
+  
+  /* メインアクション（ボタン、強調要素など） */
   --primary: #030213;
   --primary-foreground: oklch(1 0 0);
+  
+  /* 補助的な要素 */
   --secondary: oklch(0.95 0.0058 264.53);
   --secondary-foreground: #030213;
+  
+  /* 無効化された要素や控えめなテキスト */
   --muted: #ececf0;
   --muted-foreground: #717182;
+  
+  /* ホバー時や選択時のアクセント色 */
   --accent: #e9ebef;
   --accent-foreground: #030213;
+  
+  /* 警告・削除など危険な操作用 */
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
+  
+  /* 枠線・入力フィールドの設定 */
   --border: rgba(0, 0, 0, 0.1);
   --input: transparent;
   --input-background: #f3f3f5;
   --switch-background: #cbced4;
+  
+  /* フォントの太さ・フォーカス時のリング */
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: oklch(0.708 0 0);
+  
+  /* グラフ・チャート用カラー（5色） */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+  
+  /* 角丸の基準値 */
   --radius: 0.625rem;
+  
+  /* サイドバー専用カラー */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: #030213;
@@ -42,6 +72,11 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+/**
+ * ----------------------------------------------------------------
+ * 2. ダークモード用カラー設定
+ * ----------------------------------------------------------------
+ */
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -62,8 +97,6 @@
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
   --ring: oklch(0.439 0 0);
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -79,6 +112,13 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
+/**
+ * ----------------------------------------------------------------
+ * 3. Tailwindテーマへのマッピング
+ * ----------------------------------------------------------------
+ * 上記で定義したCSS変数をTailwindのクラス名として使えるように紐付けます。
+ * 例: bg-background, text-primary など
+ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -106,10 +146,14 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  
+  /* 角丸バリエーションの計算 */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  
+  /* サイドバー用クラスのマッピング */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -120,18 +164,26 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/**
+ * ----------------------------------------------------------------
+ * 4. ベース・グローバルスタイル
+ * ----------------------------------------------------------------
+ */
 @layer base {
+  /* すべての要素の枠線とフォーカスリングのデフォルト設定 */
   * {
     @apply border-border outline-ring/50;
   }
 
+  /* HTML body のデフォルト背景色とテキスト色 */
   body {
     @apply bg-background text-foreground;
   }
 }
 
 /**
- * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ * 5. 標準タイポグラフィの設定
+ * 特定のクラス（text-lgなど）が指定されていない要素へのデフォルトスタイル
  */
 @layer base {
   :where(:not(:has([class*=' text-']), :not(:has([class^='text-'])))) {
@@ -185,6 +237,7 @@
   }
 }
 
+/* 基準となるフォントサイズの設定 */
 html {
   font-size: var(--font-size);
 }

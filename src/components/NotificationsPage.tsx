@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { NotificationEditModal } from "./NotificationEditModal";
 import { supabase } from "./supabaseClient";
 
-// --- 型定義 ---
+// --- 型定義 (Database/API) ---
+/** データベースのビュー「お知らせ_view」から取得される生データの構造 */
 interface NoticeViewDB {
   notice_id: number;
   admin_id: number;
@@ -14,9 +15,11 @@ interface NoticeViewDB {
   start_date: string;
   end_date: string;
   is_draft: boolean;
-  status: string;
+  status: string; // View側で計算済みのステータス文字列（"公開中"など）
 }
 
+// --- 型定義 (UI) ---
+/** UIコンポーネントで扱うための加工済みデータの構造 */
 interface UI_Notification {
   id: number;
   status: "公開中" | "下書き" | "公開終了" | "非公開" | "公開前";
@@ -25,17 +28,22 @@ interface UI_Notification {
   startDate: string;
   endDate: string;
   content: string;
-  statusColor: string;
-  importanceColor: string;
+  statusColor: string;     // Tailwind CSS のクラス名
+  importanceColor: string; // Tailwind CSS のクラス名
 }
 
+/**
+ * お知らせ管理ページコンポーネント
+ * データベースからのデータ取得、一覧表示、削除、非公開設定、編集モーダルの制御を行う
+ */
 export function NotificationsPage() {
-  const [notifications, setNotifications] = useState<UI_Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedNotification, setSelectedNotification] = useState<UI_Notification | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // --- ステート管理 ---
+  const [notifications, setNotifications] = useState<UI_Notification[]>([]); // お知らせ一覧データ
+  const [isLoading, setIsLoading] = useState(true);                        // ローディング状態
+  const [selectedNotification, setSelectedNotification] = useState<UI_Notification | null>(null); // 編集対象のデータ
+  const [isModalOpen, setIsModalOpen] = useState(false);                    // モーダルの開閉
 
-  // --- ステータス色の決定 ---
+  // --- 補助関数: ステータスに応じたテキスト色の決定 ---
   const getStatusColor = (status: string) => {
     switch (status) {
       case "公開中": return "text-green-600";
@@ -46,22 +54,25 @@ export function NotificationsPage() {
     }
   };
 
-  // --- データ取得 (SELECT) ---
+  // --- データ取得処理 (SELECT) ---
+  /** Supabaseから「お知らせ_view」を取得し、UI用の形式にフォーマットしてステートに保存する */
   const fetchNotices = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("お知らせ_view")
         .select("*")
-        .order("posted_at", { ascending: false });
+        .order("posted_at", { ascending: false }); // 投稿日時が新しい順
 
       if (error) throw error;
 
       if (data) {
+        // DBのデータをUI表示用に変換
         const formattedData: UI_Notification[] = data.map((item: NoticeViewDB) => ({
           id: item.notice_id,
           title: item.title,
           content: item.content,
+          // 日付形式を YYYY-MM-DD から YY/MM/DD に整形
           startDate: item.start_date.substring(2).replace(/-/g, "/"),
           endDate: item.end_date.substring(2).replace(/-/g, "/"),
           status: item.status as UI_Notification["status"],
@@ -78,11 +89,13 @@ export function NotificationsPage() {
     }
   };
 
+  // コンポーネントマウント時に一度だけデータを取得
   useEffect(() => {
     fetchNotices();
   }, []);
 
-  // --- 削除処理 ---
+  // --- 削除処理 (DELETE) ---
+  /** 特定のお知らせを物理削除する */
   const handleDelete = async (id: number, title: string) => {
     if (!confirm(`「${title}」を完全に削除してもよろしいですか？`)) return;
 
@@ -91,69 +104,75 @@ export function NotificationsPage() {
         .from("お知らせ")
         .delete()
         .eq("notice_id", id)
-        .select(); // 削除したデータを取得するように設定
+        .select(); // 実行後のデータを取得して成功判定に利用
 
       if (error) throw error;
 
-      // 重要：削除対象が見つからず data が空の場合、エラーを投げる
+      // 該当データが存在せず削除できなかった場合のハンドリング
       if (!data || data.length === 0) {
         throw new Error("削除対象のお知らせが見つかりませんでした。既に削除されている可能性があります。");
       }
 
       alert("削除しました");
-      fetchNotices();
+      fetchNotices(); // 一覧を再取得して画面を更新
     } catch (error: any) {
       alert(`削除に失敗しました: ${error.message}`);
     }
   };
 
-  // --- 非公開（is_draft: false, is_public: false）への切り替え処理 ---
+  // --- 非公開への切り替え処理 (UPDATE) ---
+  /** 下書きフラグを解除し、かつ公開フラグを折ることで「アーカイブ状態」にする */
   const handleSetHidden = async (id: number) => {
     if (!confirm("このお知らせを「非公開」にしますか？")) return;
 
     try {
-      const { data, error } = await supabase // countを取得するように設定
+      const { data, error } = await supabase
         .from("お知らせ")
         .update({ 
           is_draft: false,
           is_public: false
         })
-        .eq("notice_id", id) // テスト用の存在しないID
-        .select(); // 更新結果を返すように要求
+        .eq("notice_id", id)
+        .select();
 
       if (error) throw error;
 
-      // 重要：データが1件も更新されていなければエラーとして扱う
       if (!data || data.length === 0) {
         throw new Error("指定されたお知らせが見つかりませんでした。");
       }
 
       alert("非公開に設定しました");
-      fetchNotices();
+      fetchNotices(); // 一覧を再取得
     } catch (error: any) {
       alert(`更新に失敗しました: ${error.message}`);
     }
   };
 
-  // --- モーダル操作 ---
+  // --- モーダル操作関連 ---
+  
+  /** 既存お知らせの編集: 選択データをセットしてモーダルを開く */
   const handleEdit = (notification: UI_Notification) => {
     setSelectedNotification(notification);
     setIsModalOpen(true);
   };
 
+  /** 新規作成: 選択データを空（null）にしてモーダルを開く */
   const handleCreateNew = () => {
     setSelectedNotification(null);
     setIsModalOpen(true);
   };
 
+  /** モーダルを閉じる: 状態をリセットし、DB変更があるためデータを再読み込み */
   const handleCloseModal = async () => {
     setIsModalOpen(false);
     setSelectedNotification(null);
+    // モーダルが閉じるアニメーション時間を考慮して少し待機してから再取得
     await new Promise(resolve => setTimeout(resolve, 300)); 
     await fetchNotices(); 
   };
 
-  // --- ボタンレンダリング ---
+  // --- 部分レンダリング: 操作ボタン ---
+  /** 公開ステータスによって「非公開へ」か「削除」かを出し分ける */
   const renderActionButtons = (n: UI_Notification) => (
     <div className="flex justify-center gap-3">
       <button 
@@ -183,14 +202,17 @@ export function NotificationsPage() {
 
   return (
     <div className="bg-green-700 p-4 sm:p-8 min-h-screen flex justify-center">
+      {/* カスタムスクロールバーのスタイル定義 */}
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #15803d; border-radius: 4px; }
       `}</style>
 
+      {/* メインコンテナ */}
       <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-6xl h-fit border-4 border-black">
         
+        {/* ヘッダーセクション */}
         <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
           <h3 className="text-2xl font-black text-gray-800 tracking-tighter">● お知らせ管理パネル</h3>
           <button
@@ -201,7 +223,9 @@ export function NotificationsPage() {
           </button>
         </div>
 
+        {/* テーブルセクション */}
         <div className="border-2 border-black rounded-xl overflow-hidden shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-gray-100">
+          {/* ヘッダー固定用のテーブル */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm sm:text-base min-w-[800px] border-collapse">
               <thead className="sticky top-0 z-10">
@@ -216,6 +240,7 @@ export function NotificationsPage() {
             </table>
           </div>
 
+          {/* データ行（スクロール可能領域） */}
           <div className="overflow-y-auto max-h-[520px] custom-scrollbar bg-white">
             <table className="w-full text-sm sm:text-base min-w-[800px]">
               <tbody>
@@ -247,15 +272,17 @@ export function NotificationsPage() {
           </div>
         </div>
 
+        {/* 統計情報 */}
         <p className="mt-4 text-right text-xs text-gray-400 font-bold">
           全 {notifications.length} 件のお知らせを表示中
         </p>
       </div>
 
+      {/* 編集・新規作成用モーダルコンポーネント */}
       <NotificationEditModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        notification={selectedNotification}
+        notification={selectedNotification} // nullなら新規、データがあれば編集
       />
     </div>
   );
