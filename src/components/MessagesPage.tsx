@@ -99,7 +99,8 @@ export function MessagesPage({ onBack, isAdmin = false }: { onBack: () => void; 
               alighting:alighting_id(stop_name),
               trip:trip_id(operation_date, departure_time, fare)
             `)
-            .eq('user_id', profile.id);
+            .eq('user_id', profile.id)
+            .eq('status', 'active'); // キャンセルされた予約を除外
 
           if (reservations) {
             reservations.forEach((r: any) => {
