@@ -42,6 +42,7 @@ export default function App() {
   const [resetOtp, setResetOtp] = useState('');
   const [busSearchData, setBusSearchData] = useState<any>(null);
   const [bookingData, setBookingData] = useState<any>(null);
+  const [mapSpots, setMapSpots] = useState<any[]>([]);
 
   // セキュリティ監視
   useEffect(() => {
@@ -163,10 +164,16 @@ export default function App() {
         {currentUserPage === 'booking-complete' && user && <BookingCompletePage onComplete={() => setCurrentUserPage('home')} />}
 
         {/* 公開ページ */}
-        {currentUserPage === 'map' && <MapPage />}
+        {currentUserPage === 'map' && (<MapPage spots={mapSpots} />)}
         {currentUserPage === 'contact' && <ContactPage onBack={() => setCurrentUserPage('home')} isAdmin={false} />}
         {currentUserPage === 'route-map' && <RouteMapPage onBack={() => setCurrentUserPage('booking')} />}
-        {currentUserPage === 'travel' && <TravelPlanPage onShowItinerary={() => setCurrentUserPage('itinerary')} />}
+        {currentUserPage === 'travel' && (
+          <TravelPlanPage
+            onShowItinerary={() => setCurrentUserPage('itinerary')}
+            setMapSpots={setMapSpots}
+            setCurrentUserPage={setCurrentUserPage}
+          />
+        )}
         {currentUserPage === 'itinerary' && <ItineraryPage />}
         {currentUserPage === 'sightseeing' && <SightseeingPage />}
       </main>
