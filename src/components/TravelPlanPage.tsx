@@ -33,7 +33,7 @@ const EXTRA_SPOT_NAMES = [
 ];
 
 export function TravelPlanPage({
-  onShowItinerary,
+  //onShowItinerary,
   setMapSpots,
   setCurrentUserPage,
 }: Props) {

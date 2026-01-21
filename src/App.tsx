@@ -115,7 +115,7 @@ export default function App() {
 
         {/* 登録・パスワードリセット */}
         {currentUserPage === 'register' && (
-          <RegisterPage initialData={registerData} onShowConfirm={(data) => { setRegisterData(data); setCurrentUserPage('register-confirm'); }} />
+          <RegisterPage initialData={registerData} onShowConfirm={(data: any) => { setRegisterData(data); setCurrentUserPage('register-confirm'); }} />
         )}
         {currentUserPage === 'register-confirm' && registerData && (
           <RegisterConfirmPage data={registerData} onBack={() => setCurrentUserPage('register')} onConfirm={() => { setLoginMessage('登録完了！ログインしてください。'); setCurrentUserPage('login'); setRegisterData(null); }} />

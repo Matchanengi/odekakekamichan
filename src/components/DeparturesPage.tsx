@@ -110,10 +110,11 @@ async function fetchDepartures() {
     fetchDepartures();
   }, []);
 
-  const handlePrintPassengerList = (departureId: string) => {
-    console.log(`乗車客リストPDF出力準備中: ${departureId}`);
-    alert("PDF出力機能は準備中です");
-  };
+  //使用してない
+  // const handlePrintPassengerList = (departureId: string) => {
+  //   console.log(`乗車客リストPDF出力準備中: ${departureId}`);
+  //   alert("PDF出力機能は準備中です");
+  // };
 
   if (loading) return <div className="p-8 text-center">運行情報を確認中...</div>;
 
@@ -146,7 +147,7 @@ async function fetchDepartures() {
                         {departure.reserved}
                       </span>
                       {' / '}{departure.capacity} 人
-                    </td>x
+                    </td>
                   </tr>
                 ))
               ) : (

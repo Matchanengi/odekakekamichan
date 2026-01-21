@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { Calendar, AlertCircle, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+// 修正前
+//import { Calendar, AlertCircle, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+// 修正後 (Clock と ArrowRight だけ使っている場合)
+import { Clock, ArrowRight } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import type { User } from "@supabase/supabase-js";
 

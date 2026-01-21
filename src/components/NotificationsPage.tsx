@@ -112,7 +112,7 @@ export function NotificationsPage() {
     if (!confirm("このお知らせを「非公開」にしますか？")) return;
 
     try {
-      const { data, error, count } = await supabase // countを取得するように設定
+      const { data, error } = await supabase // countを取得するように設定
         .from("お知らせ")
         .update({ 
           is_draft: false,
