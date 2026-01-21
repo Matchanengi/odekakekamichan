@@ -8,6 +8,8 @@ import { supabase } from './supabaseClient';
 interface Spot {
   spot_id: number;
   name: string;
+  latitude: number | null;
+  longitude: number | null;
   hurigana: string;
   distance: number | null;
   description: string;
@@ -51,7 +53,9 @@ export function SightseeingPage() {
           regular_holiday,
           parking,
           fee,
-          contact_info
+          contact_info,
+          latitude,
+          longitude
         `);
 
       if (error) {
@@ -61,25 +65,29 @@ export function SightseeingPage() {
       }
 
       const formatted: Spot[] =
-        data?.map((item: any) => ({
-          spot_id: item.spot_id,
-          name: item.name,
-          hurigana: item.hurigana ?? '',
-          distance: item.distance ?? null,
-          description: item.description ?? '',
-          images: Array.isArray(item.img_pass)
-            ? item.img_pass
-            : item.img_pass
-            ? [item.img_pass]
-            : [],
-          details: {
-            hours: item.business_hours ?? '不明',
-            closedDays: item.regular_holiday ?? '不明',
-            parking: item.parking ?? '不明',
-            price: item.fee ?? '不明',
-            contact: item.contact_info ?? '不明',
-          },
-        })) ?? [];
+      data?.map((item: any) => ({
+        spot_id: item.spot_id,
+        name: item.name,
+        hurigana: item.hurigana ?? '',
+        distance: item.distance ?? null,
+        description: item.description ?? '',
+        images: Array.isArray(item.img_pass)
+          ? item.img_pass
+          : item.img_pass
+          ? [item.img_pass]
+          : [],
+        // --- ここから下が重要 ---
+        latitude: item.latitude ?? 0,   // detailsの外に出す
+        longitude: item.longitude ?? 0, // detailsの外に出す
+        details: {
+          hours: item.business_hours ?? '不明',
+          closedDays: item.regular_holiday ?? '不明',
+          parking: item.parking ?? '不明',
+          price: item.fee ?? '不明',
+          contact: item.contact_info ?? '不明',
+          // ここにあった latitude/longitude は削除（または残しても良いが通常は不要）
+        },
+      })) ?? [];
 
       setSpots(formatted);
       setLoading(false);

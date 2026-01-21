@@ -26,7 +26,7 @@ interface StopData {
 
 export function ReservationEditModal({ isOpen, onClose, onUpdate, reservation }: ReservationEditModalProps) {
   // --- States ---
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [, setUserInfo] = useState<UserInfo | null>(null); // userInfo を削除
   const [adults, setAdults] = useState(0);
   const [children, setChildren] = useState(0);
   const [boardingLocation, setBoardingLocation] = useState("");

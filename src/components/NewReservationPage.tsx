@@ -1,5 +1,13 @@
+<<<<<<< HEAD
 import { useState, useEffect, useMemo } from "react";
 import { Clock, ArrowRight, ArrowRightLeft } from "lucide-react";
+=======
+import { useState, useEffect } from "react";
+// 修正前
+//import { Calendar, AlertCircle, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+// 修正後 (Clock と ArrowRight だけ使っている場合)
+import { Clock, ArrowRight } from "lucide-react";
+>>>>>>> feba3e7d8912e1ac43e195ffea2912e27aa3afc6
 import { supabase } from "./supabaseClient";
 import type { User } from "@supabase/supabase-js";
 

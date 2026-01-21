@@ -1,60 +1,114 @@
 import { useState } from 'react';
-import mapImage from "../../img/0c7dbf9de4fe44c2e056ffc2a1bda5ea6e175f23.png";
+import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { supabase } from './supabaseClient';
 
-export function MapPage() {
-  const [zoom, setZoom] = useState(100);
+type Spot = {
+  spot_id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+};
 
-  const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 10, 200));
-  };
+type MapPageProps = {
+  spots: Spot[];
+};
 
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 10, 50));
+const center = {
+  lat: 33.6036,
+  lng: 133.6867,
+};
+
+export function MapPage({ spots }: MapPageProps) {
+  const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+
+  // 自作ピン
+  const [customMarkers, setCustomMarkers] = useState<
+    { lat: number; lng: number }[]
+  >([]);
+
+  // ★ 拡大縮小用 zoom state
+  const [zoom, setZoom] = useState(13);
+
+  // マップクリック（自分でピンを打つ）
+  const handleMapClick = async (e: google.maps.MapMouseEvent) => {
+    if (!e.latLng) return;
+
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+
+    setCustomMarkers((prev) => [...prev, { lat, lng }]);
+
+    const { error } = await supabase
+      .from('user_pins')
+      .insert([{ latitude: lat, longitude: lng }]);
+
+    if (error) {
+      console.error('Supabase保存エラー', error);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-white py-8 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Title Section */}
-        <div className="mb-6">
-          <h1 className="text-blue-900 mb-4">MAP</h1>
-          <div className="text-blue-900 space-y-1">
-            <p>表示されている地図は香美市のも地図になります。</p>
-            <p>観光地を決めるヒントや、経路探索などにお使いください</p>
-          </div>
-        </div>
-
-        {/* Map Section */}
-        <div className="overflow-hidden rounded-lg mb-6 bg-gray-100">
-          <div 
-            className="transition-transform origin-center"
-            style={{ transform: `scale(${zoom / 100})` }}
-          >
-            <img
-              src={mapImage}
-              alt="香美市の地図"
-              className="w-full h-auto"
+    <div className="min-h-screen bg-white p-4 relative">
+      <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}>
+        <GoogleMap
+          mapContainerStyle={{ width: '100%', height: '500px' }}
+          center={center}
+          zoom={zoom}
+          onClick={handleMapClick}
+          options={{
+            clickableIcons: false,
+            zoomControl: false,      // ★ Google標準のズームUIを消す
+            fullscreenControl: false,
+          }}
+        >
+          {/* 観光地ピン */}
+          {spots.map((spot) => (
+            <Marker
+              key={spot.spot_id}
+              position={{ lat: spot.latitude, lng: spot.longitude }}
+              onClick={() => setSelectedSpot(spot)}
             />
-          </div>
-        </div>
+          ))}
 
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-4">
-          <div className="text-2xl italic">{zoom}%</div>
-          <button
-            onClick={handleZoomIn}
-            className="px-12 py-4 bg-green-500 text-white rounded-lg hover:bg-green-600"
-          >
-            拡大
-          </button>
-          <button
-            onClick={handleZoomOut}
-            className="px-12 py-4 bg-green-500 text-white rounded-lg hover:bg-green-600"
-          >
-            縮小
-          </button>
+          {/* 自作ピン（青） */}
+          {customMarkers.map((marker, index) => (
+            <Marker
+              key={`custom-${index}`}
+              position={marker}
+              icon={{
+                url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+              }}
+              onClick={() =>
+                setCustomMarkers((prev) =>
+                  prev.filter((_, i) => i !== index)
+                )
+              }
+            />
+          ))}
+
+          {/* InfoWindow */}
+          {selectedSpot && (
+            <InfoWindow
+              position={{
+                lat: selectedSpot.latitude,
+                lng: selectedSpot.longitude,
+              }}
+              onCloseClick={() => setSelectedSpot(null)}
+            >
+              <div className="text-sm font-bold">
+                {selectedSpot.name}
+              </div>
+            </InfoWindow>
+          )}
+        </GoogleMap>
+
+         {/* Controls */}
+         <div className="flex items-center justify-center gap-4">
+          <div className="text-2xl italic">{zoom}</div>
+          <button onClick={() => setZoom(z => Math.min(z + 1, 20))}>拡大</button>
+          <button onClick={() => setZoom(z => Math.max(z - 1, 5))}>縮小</button>
         </div>
-      </div>
+      </LoadScript>
     </div>
   );
 }

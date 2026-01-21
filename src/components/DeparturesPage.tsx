@@ -112,6 +112,15 @@ export function DeparturesPage() {
     fetchDepartures();
   }, []);
 
+<<<<<<< HEAD
+=======
+  //使用してない
+  // const handlePrintPassengerList = (departureId: string) => {
+  //   console.log(`乗車客リストPDF出力準備中: ${departureId}`);
+  //   alert("PDF出力機能は準備中です");
+  // };
+
+>>>>>>> feba3e7d8912e1ac43e195ffea2912e27aa3afc6
   if (loading) return <div className="p-8 text-center">運行情報を確認中...</div>;
 
   return (
@@ -142,7 +151,11 @@ export function DeparturesPage() {
                       <span className={departure.reserved >= departure.capacity ? 'text-red-600 font-bold' : 'text-cyan-600'}>
                         {departure.reserved}
                       </span>
+<<<<<<< HEAD
                       <span className="text-gray-700"> / {departure.capacity} 人</span>
+=======
+                      {' / '}{departure.capacity} 人
+>>>>>>> feba3e7d8912e1ac43e195ffea2912e27aa3afc6
                     </td>
                   </tr>
                 ))
