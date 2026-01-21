@@ -5,9 +5,17 @@ import { ChevronDown, Star, MapPin, Clock, Calendar, Car, Coins, Phone } from 'l
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { supabase } from './supabaseClient';
 
+type Props = {
+  onShowItinerary: () => void;
+  setMapSpots: (spots: Spot[]) => void;
+  setCurrentUserPage: (page: 'map') => void;
+};
+
 type Spot = {
   spot_id: number;
   name: string;
+  latitude: number | null;
+  longitude: number | null;
   description: string | null;
   business_hours: string | null;
   regular_holiday: string | null;
@@ -24,7 +32,11 @@ const EXTRA_SPOT_NAMES = [
   '香美市立やなせたかし記念館 アンパンマンミュージアム',
 ];
 
-export function TravelPlanPage() {
+export function TravelPlanPage({
+  onShowItinerary,
+  setMapSpots,
+  setCurrentUserPage,
+}: Props) {
   const [destination, setDestination] = useState('');
   const [spots, setSpots] = useState<Spot[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -187,9 +199,18 @@ export function TravelPlanPage() {
                 })}
 
                 <div className="flex justify-center pt-8">
-                  <button className="w-full sm:w-auto bg-blue-900 text-white px-16 py-4 rounded-2xl font-bold hover:bg-blue-800 transition-all shadow-xl active:scale-95">
-                    MAPで経路を確認する
-                  </button>
+                <button
+                type="button"
+                  onClick={() => {
+                    setMapSpots(
+                      spots.filter(s => s.latitude && s.longitude)
+                    );
+                    setCurrentUserPage('map');
+                  }}
+                  className="..."
+                >
+                  MAPで経路を確認する
+                </button>
                 </div>
               </div>
             )}
