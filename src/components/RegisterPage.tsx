@@ -17,8 +17,8 @@ const registerSchema = z.object({
     .string()
     .min(8, "パスワードは8文字以上で設定してください")
     .regex(
-      /^[a-zA-Z0-9!-/:-@[-`{-~]+$/,
-      "パスワードは半角英数字・記号で入力してください"
+      /^[a-zA-Z0-9!@#$%^&*()_\-+=?]+$/, 
+      "パスワードは半角英数字と指定の記号(!@#$%^&*()_-+=?)のみ使用できます"
     ),
   confirmPassword: z.string().min(1, "確認用パスワードを入力してください"),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -121,7 +121,7 @@ export function RegisterPage({ onShowConfirm, initialData }: any) {
                 {/* ★ ここに注意書きを追加 */}
                 <div className="sm:ml-[172px] space-y-1">
                   <p className="text-xs text-gray-500 leading-relaxed">
-                    ※ 8文字以上、半角英数字・記号が使用できます。<br />
+                    ※ 8文字以上、半角英数字・指定の記号(!@#$%^&*()_-+=?)のみ（全角不可）が使用できます。<br />
                     <span className="text-red-500 font-medium">※ 全角文字(日本語・全角数字など)は使用できません。</span>
                   </p>
                   {errors.password && (
